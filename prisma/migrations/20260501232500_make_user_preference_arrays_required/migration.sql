@@ -1,0 +1,2 @@
+ALTER TABLE "User" ALTER COLUMN "favoriteGenres" SET NOT NULL;
+ALTER TABLE "User" ALTER COLUMN "mutedGenres" SET NOT NULL;
