@@ -508,12 +508,14 @@ export function WriteEditor({ initialDraft }: WriteEditorProps) {
     normalizeInitialContent(initialDraft?.content)
   );
   const [isSaving, setIsSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState("Draft not saved yet.");
+  const [saveMessage, setSaveMessage] = useState(
+    initialDraft ? "Loaded saved entry." : "Entry not saved yet."
+  );
   const initialEditorState = useMemo(() => JSON.stringify(content), [content]);
 
   const saveDraft = async () => {
     setIsSaving(true);
-    setSaveMessage("Saving draft...");
+    setSaveMessage("Saving entry...");
 
     try {
       const response = await fetch("/api/entries/draft", {
@@ -538,7 +540,7 @@ export function WriteEditor({ initialDraft }: WriteEditorProps) {
       };
 
       if (!response.ok || !data.draft) {
-        setSaveMessage(data.error ?? "Unable to save draft.");
+        setSaveMessage(data.error ?? "Unable to save entry.");
         return;
       }
 
@@ -547,7 +549,7 @@ export function WriteEditor({ initialDraft }: WriteEditorProps) {
         `Saved ${new Date(data.draft.updatedAt).toLocaleString()}`
       );
     } catch {
-      setSaveMessage("Unable to save draft.");
+      setSaveMessage("Unable to save entry.");
     } finally {
       setIsSaving(false);
     }
@@ -636,7 +638,7 @@ export function WriteEditor({ initialDraft }: WriteEditorProps) {
             onClick={saveDraft}
             type="button"
           >
-            {isSaving ? "Saving..." : "Save Draft"}
+            {isSaving ? "Saving..." : "Save Entry"}
           </button>
         </div>
         <StatusBarPlugin />

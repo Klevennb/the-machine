@@ -108,7 +108,6 @@ export async function POST(request: Request) {
     privateAuthorNote: privateAuthorNote.trim() || null,
     publicAuthorNote: publicAuthorNote.trim() || null,
     isStandalone: true,
-    status: "DRAFT" as const,
   };
 
   if (body.entryId) {
@@ -144,6 +143,7 @@ export async function POST(request: Request) {
     data: {
       authorId: userId,
       ...draftData,
+      status: "DRAFT" as const,
     },
     select: {
       id: true,
