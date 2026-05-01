@@ -6,6 +6,7 @@ type ProtectedPageShellProps = {
   description: string;
   children?: React.ReactNode;
   showHomeLink?: boolean;
+  panelClassName?: string;
 };
 
 export function ProtectedPageShell({
@@ -13,12 +14,20 @@ export function ProtectedPageShell({
   description,
   children,
   showHomeLink = false,
+  panelClassName,
 }: ProtectedPageShellProps) {
+  const panelClasses = [
+    "w-full rounded-[2rem] border border-slate-200 bg-white p-8 shadow-[0_30px_90px_-40px_rgba(15,23,42,0.35)] sm:p-10",
+    panelClassName,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <div className="min-h-screen bg-slate-100">
       <ProtectedHeader />
       <main className="mx-auto flex min-h-[calc(100vh-73px)] w-full max-w-5xl items-center justify-center px-6 py-10">
-        <div className="w-full max-w-3xl rounded-[2rem] border border-slate-200 bg-white p-8 shadow-[0_30px_90px_-40px_rgba(15,23,42,0.35)] sm:p-10">
+        <div className={panelClasses}>
           <h1 className="text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
             {title}
           </h1>
