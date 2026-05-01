@@ -30,6 +30,12 @@ enum EntryStatus {
   ARCHIVED
 }
 
+enum ProfileVisibility {
+  PRIVATE
+  MEMBERS
+  PUBLIC
+}
+
 model User {
   id                 String                 @id @default(cuid())
   name               String?
@@ -40,6 +46,14 @@ model User {
   image              String?
   timezone           String                 @default("America/Chicago")
   isProfilePublic    Boolean                @default(true)
+  profileVisibility  ProfileVisibility      @default(PUBLIC)
+  showEmailOnProfile Boolean                @default(false)
+  allowNsfwStories   Boolean                @default(false)
+  favoriteGenres     String[]               @default([])
+  mutedGenres        String[]               @default([])
+  feedIncludesPublic Boolean                @default(true)
+  feedIncludesFriends Boolean               @default(true)
+  feedIncludesPrompts Boolean               @default(true)
   createdAt          DateTime               @default(now())
   updatedAt          DateTime               @updatedAt
   accounts           Account[]
