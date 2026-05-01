@@ -6,14 +6,53 @@ generator client {
   provider = "prisma-client-js"
 }
 
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  BLOCKED
+}
+
+enum EntryVisibility {
+  PRIVATE
+  FRIENDS
+  PUBLIC
+}
+
+enum CommentPolicy {
+  ENABLED
+  FRIENDS_ONLY
+  DISABLED
+}
+
+enum EntryStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
 model User {
-  id       String  @id @default(cuid())
-  name     String?
-  email    String? @unique
-  password String
-  image    String?
-  accounts Account[]
-  sessions Session[]
+  id                 String                 @id @default(cuid())
+  name               String?
+  username           String?                @unique
+  bio                String?
+  email              String?                @unique
+  password           String
+  image              String?
+  timezone           String                 @default("America/Chicago")
+  isProfilePublic    Boolean                @default(true)
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+  accounts           Account[]
+  sessions           Session[]
+  entries            Entry[]
+  entrySeries        EntrySeries[]
+  wordGoals          WordGoal[]
+  dailyProgress      DailyProgress[]
+  promptAssignments  UserPromptAssignment[]
+  likes              EntryLike[]
+  comments           EntryComment[]
+  sentFriendRequests Friendship[]           @relation("FriendshipRequester")
+  receivedFriends    Friendship[]           @relation("FriendshipAddressee")
 }
 
 model Account {
@@ -23,7 +62,10 @@ model Account {
   providerAccountId String
   type              String
 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 model Session {
@@ -32,5 +74,186 @@ model Session {
   userId       String
   expires      DateTime
 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model WordGoal {
+  id                String          @id @default(cuid())
+  userId            String
+  title             String
+  description       String?
+  dailyTargetWords  Int
+  isActive          Boolean         @default(true)
+  startDate         DateTime
+  endDate           DateTime?
+  currentStreakDays Int             @default(0)
+  bestStreakDays    Int             @default(0)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  progressDays      DailyProgress[]
+
+  @@index([userId, isActive])
+}
+
+model DailyProgress {
+  id              String                @id @default(cuid())
+  userId          String
+  goalId          String
+  date            DateTime
+  wordsWritten    Int                   @default(0)
+  targetWords     Int
+  goalMet         Boolean               @default(false)
+  streakDayNumber Int?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goal            WordGoal              @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  entryCredits    EntryProgressCredit[]
+
+  @@unique([userId, date])
+  @@index([goalId, date])
+}
+
+model Prompt {
+  id              String                 @id @default(cuid())
+  title           String
+  body            String
+  genre           String
+  tags            String[]
+  isFeatured      Boolean                @default(false)
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  assignments     UserPromptAssignment[]
+  promptedEntries Entry[]                @relation("PromptResponses")
+
+  @@index([genre, isFeatured])
+}
+
+model UserPromptAssignment {
+  id          String    @id @default(cuid())
+  userId      String
+  promptId    String
+  assignedAt  DateTime  @default(now())
+  completedAt DateTime?
+  dismissedAt DateTime?
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prompt      Prompt    @relation(fields: [promptId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, promptId, assignedAt])
+  @@index([userId, assignedAt])
+  @@index([promptId])
+}
+
+model EntrySeries {
+  id          String          @id @default(cuid())
+  authorId    String
+  title       String
+  slug        String?         @unique
+  description String?
+  visibility  EntryVisibility @default(PRIVATE)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  author      User            @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  entries     Entry[]
+
+  @@index([authorId, createdAt])
+}
+
+model Entry {
+  id                String                @id @default(cuid())
+  authorId          String
+  seriesId          String?
+  promptId          String?
+  title             String?
+  slug              String?               @unique
+  summary           String?
+  plainText         String?
+  content           Json?
+  wordCount         Int                   @default(0)
+  privateAuthorNote String?
+  publicAuthorNote  String?
+  visibility        EntryVisibility       @default(PRIVATE)
+  commentPolicy     CommentPolicy         @default(ENABLED)
+  status            EntryStatus           @default(DRAFT)
+  isStandalone      Boolean               @default(true)
+  firstSubmittedAt  DateTime?
+  publishedAt       DateTime?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  author            User                  @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  series            EntrySeries?          @relation(fields: [seriesId], references: [id], onDelete: SetNull)
+  prompt            Prompt?               @relation("PromptResponses", fields: [promptId], references: [id], onDelete: SetNull)
+  likes             EntryLike[]
+  comments          EntryComment[]
+  progressCredits   EntryProgressCredit[]
+
+  @@index([authorId, createdAt])
+  @@index([seriesId, createdAt])
+  @@index([visibility, status, publishedAt])
+  @@index([promptId])
+}
+
+model EntryProgressCredit {
+  id              String        @id @default(cuid())
+  entryId         String
+  dailyProgressId String
+  creditedDate    DateTime
+  creditedWords   Int
+  createdAt       DateTime      @default(now())
+  entry           Entry         @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  dailyProgress   DailyProgress @relation(fields: [dailyProgressId], references: [id], onDelete: Cascade)
+
+  @@unique([entryId, dailyProgressId])
+  @@index([dailyProgressId, creditedDate])
+}
+
+model EntryLike {
+  id        String   @id @default(cuid())
+  entryId   String
+  userId    String
+  createdAt DateTime @default(now())
+  entry     Entry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([entryId, userId])
+  @@index([userId, createdAt])
+}
+
+model EntryComment {
+  id              String         @id @default(cuid())
+  entryId         String
+  authorId        String
+  parentCommentId String?
+  body            String
+  isEdited        Boolean        @default(false)
+  isDeleted       Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  entry           Entry          @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  author          User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parentComment   EntryComment?  @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies         EntryComment[] @relation("CommentReplies")
+
+  @@index([entryId, createdAt])
+  @@index([authorId, createdAt])
+  @@index([parentCommentId])
+}
+
+model Friendship {
+  id          String           @id @default(cuid())
+  requesterId String
+  addresseeId String
+  status      FriendshipStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  acceptedAt  DateTime?
+  requester   User             @relation("FriendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee   User             @relation("FriendshipAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId, status])
+  @@index([requesterId, status])
 }
