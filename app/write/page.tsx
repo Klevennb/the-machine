@@ -5,7 +5,11 @@ import { WriteEditor } from "@/app/components/write-editor";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-export default async function WritePage() {
+type WritePageProps = {
+  searchParams: Promise<{ entryId?: string | string[] }>;
+};
+
+export default async function WritePage({ searchParams }: WritePageProps) {
   const session = await getServerSession(authOptions);
   const userId = (session?.user as { id?: string } | undefined)?.id ?? null;
 
@@ -13,14 +17,26 @@ export default async function WritePage() {
     redirect("/login");
   }
 
+  const params = await searchParams;
+  const requestedEntryId = Array.isArray(params.entryId)
+    ? params.entryId[0]
+    : params.entryId;
+
   const draft = await prisma.entry.findFirst({
-    where: {
-      authorId: userId,
-      status: "DRAFT",
-    },
-    orderBy: {
-      updatedAt: "desc",
-    },
+    where: requestedEntryId
+      ? {
+          id: requestedEntryId,
+          authorId: userId,
+        }
+      : {
+          authorId: userId,
+          status: "DRAFT",
+        },
+    orderBy: requestedEntryId
+      ? undefined
+      : {
+          updatedAt: "desc",
+        },
     select: {
       id: true,
       title: true,

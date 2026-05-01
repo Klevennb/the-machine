@@ -1,0 +1,44 @@
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+function getSessionUserId(session: unknown) {
+  return (session as { user?: { id?: string } } | null)?.user?.id ?? null;
+}
+
+export async function GET() {
+  const session = await getServerSession(authOptions);
+  const userId = getSessionUserId(session);
+
+  if (!userId) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const entries = await prisma.entry.findMany({
+    where: {
+      authorId: userId,
+    },
+    orderBy: {
+      updatedAt: "desc",
+    },
+    select: {
+      id: true,
+      title: true,
+      summary: true,
+      plainText: true,
+      wordCount: true,
+      privateAuthorNote: true,
+      publicAuthorNote: true,
+      visibility: true,
+      status: true,
+      createdAt: true,
+      updatedAt: true,
+      publishedAt: true,
+    },
+  });
+
+  return Response.json({ entries });
+}
