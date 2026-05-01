@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
@@ -103,12 +103,79 @@ const DEFAULT_TOOLBAR_STATE: ToolbarState = {
 
 const FONT_SIZES = ["12px", "14px", "16px", "18px", "24px", "32px"];
 
+type DraftContent = {
+  root: {
+    children: unknown[];
+    direction: null | "ltr" | "rtl";
+    format: string;
+    indent: number;
+    type: "root";
+    version: number;
+  };
+};
+
+type DraftEntry = {
+  id: string;
+  title: string;
+  plainText: string;
+  content: unknown;
+  wordCount: number;
+  privateAuthorNote: string;
+  publicAuthorNote: string;
+};
+
+type WriteEditorProps = {
+  initialDraft: DraftEntry | null;
+};
+
 function Placeholder() {
   return (
     <div className="pointer-events-none absolute left-5 top-5 text-slate-400">
       Start drafting here...
     </div>
   );
+}
+
+function createEmptyEditorState(): DraftContent {
+  return {
+    root: {
+      children: [
+        {
+          children: [],
+          direction: null,
+          format: "",
+          indent: 0,
+          textFormat: 0,
+          textStyle: "",
+          type: "paragraph",
+          version: 1,
+        },
+      ],
+      direction: null,
+      format: "",
+      indent: 0,
+      type: "root",
+      version: 1,
+    },
+  };
+}
+
+function normalizeInitialContent(content: unknown): DraftContent {
+  if (
+    !content ||
+    typeof content !== "object" ||
+    !("root" in (content as Record<string, unknown>))
+  ) {
+    return createEmptyEditorState();
+  }
+
+  const root = (content as { root?: { children?: unknown[] } }).root;
+
+  if (!root || !Array.isArray(root.children) || root.children.length === 0) {
+    return createEmptyEditorState();
+  }
+
+  return content as DraftContent;
 }
 
 function ToolbarButton({
@@ -400,10 +467,140 @@ function StatusBarPlugin() {
   );
 }
 
-export function WriteEditor() {
+type CapturePluginProps = {
+  onChange: (payload: {
+    plainText: string;
+    wordCount: number;
+    content: DraftContent;
+  }) => void;
+};
+
+function CaptureDraftPlugin({ onChange }: CapturePluginProps) {
+  const handleChange = (editorState: EditorState) => {
+    editorState.read(() => {
+      const plainText = $getRoot().getTextContent();
+      const normalizedText = plainText.trim();
+      const wordCount = normalizedText ? normalizedText.split(/\s+/).length : 0;
+
+      onChange({
+        plainText,
+        wordCount,
+        content: editorState.toJSON() as DraftContent,
+      });
+    });
+  };
+
+  return <OnChangePlugin onChange={handleChange} />;
+}
+
+export function WriteEditor({ initialDraft }: WriteEditorProps) {
+  const [entryId, setEntryId] = useState(initialDraft?.id ?? null);
+  const [title, setTitle] = useState(initialDraft?.title ?? "");
+  const [privateAuthorNote, setPrivateAuthorNote] = useState(
+    initialDraft?.privateAuthorNote ?? ""
+  );
+  const [publicAuthorNote, setPublicAuthorNote] = useState(
+    initialDraft?.publicAuthorNote ?? ""
+  );
+  const [plainText, setPlainText] = useState(initialDraft?.plainText ?? "");
+  const [wordCount, setWordCount] = useState(initialDraft?.wordCount ?? 0);
+  const [content, setContent] = useState<DraftContent>(() =>
+    normalizeInitialContent(initialDraft?.content)
+  );
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("Draft not saved yet.");
+  const initialEditorState = useMemo(() => JSON.stringify(content), [content]);
+
+  const saveDraft = async () => {
+    setIsSaving(true);
+    setSaveMessage("Saving draft...");
+
+    try {
+      const response = await fetch("/api/entries/draft", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          entryId,
+          title,
+          plainText,
+          content,
+          wordCount,
+          privateAuthorNote,
+          publicAuthorNote,
+        }),
+      });
+
+      const data = (await response.json()) as {
+        error?: string;
+        draft?: { id: string; updatedAt: string };
+      };
+
+      if (!response.ok || !data.draft) {
+        setSaveMessage(data.error ?? "Unable to save draft.");
+        return;
+      }
+
+      setEntryId(data.draft.id);
+      setSaveMessage(
+        `Saved ${new Date(data.draft.updatedAt).toLocaleString()}`
+      );
+    } catch {
+      setSaveMessage("Unable to save draft.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
-    <LexicalComposer initialConfig={editorConfig}>
+    <LexicalComposer
+      initialConfig={{
+        ...editorConfig,
+        editorState: initialEditorState,
+      }}
+    >
       <div className="rounded-[1.75rem] border border-slate-200 bg-white">
+        <div className="mb-4 grid gap-4 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
+          <label className="block">
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Title
+            </span>
+            <input
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+              onChange={(event) => setTitle(event.target.value)}
+              placeholder="Untitled draft"
+              type="text"
+              value={title}
+            />
+          </label>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <label className="block">
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Private note
+              </span>
+              <textarea
+                className="min-h-28 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                onChange={(event) => setPrivateAuthorNote(event.target.value)}
+                placeholder="Notes only you can see..."
+                value={privateAuthorNote}
+              />
+            </label>
+
+            <label className="block">
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Public note
+              </span>
+              <textarea
+                className="min-h-28 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                onChange={(event) => setPublicAuthorNote(event.target.value)}
+                placeholder="Optional public context for this entry..."
+                value={publicAuthorNote}
+              />
+            </label>
+          </div>
+        </div>
         <ToolbarPlugin />
         <div className="relative overflow-hidden rounded-[1.25rem] border border-slate-200 bg-white">
           <RichTextPlugin
@@ -420,6 +617,27 @@ export function WriteEditor() {
           <HistoryPlugin />
           <ListPlugin />
           <LinkPlugin />
+          <CaptureDraftPlugin
+            onChange={(payload) => {
+              setPlainText(payload.plainText);
+              setWordCount(payload.wordCount);
+              setContent(payload.content);
+              setSaveMessage((current) =>
+                current.startsWith("Saved") ? "Draft has unsaved changes." : current
+              );
+            }}
+          />
+        </div>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="text-sm text-slate-500">{saveMessage}</div>
+          <button
+            className="rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+            disabled={isSaving}
+            onClick={saveDraft}
+            type="button"
+          >
+            {isSaving ? "Saving..." : "Save Draft"}
+          </button>
         </div>
         <StatusBarPlugin />
       </div>
