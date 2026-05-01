@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
-import { SignOutButton } from "@/app/components/sign-out-button";
+import Link from "next/link";
+import { ProtectedPageShell } from "@/app/components/protected-page-shell";
 import { authOptions } from "@/lib/auth";
 
 export default async function Home() {
@@ -10,11 +11,30 @@ export default async function Home() {
     redirect("/login");
   }
 
+  const pages = [
+    { href: "/write", label: "Write" },
+    { href: "/library", label: "Library" },
+    { href: "/explore", label: "Explore" },
+    { href: "/search", label: "Search" },
+    { href: "/user", label: "User" },
+  ];
+
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-100 px-6">
-      <div className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-[0_30px_90px_-40px_rgba(15,23,42,0.35)]">
-        <SignOutButton />
+    <ProtectedPageShell
+      title="Home"
+      description="Choose an area of the app to explore. These routes are now scaffolded and ready for their real functionality later."
+    >
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {pages.map((page) => (
+          <Link
+            key={page.href}
+            className="rounded-[1.5rem] border border-slate-200 bg-slate-50 px-5 py-4 text-base font-medium text-slate-800 transition hover:border-slate-300 hover:bg-white"
+            href={page.href}
+          >
+            {page.label}
+          </Link>
+        ))}
       </div>
-    </main>
+    </ProtectedPageShell>
   );
 }
