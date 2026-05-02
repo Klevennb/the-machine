@@ -1,0 +1,94 @@
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+type UpdateFriendRequestPayload = {
+  action?: "accept" | "deny" | "ignore";
+};
+
+function getSessionUserId(session: unknown) {
+  return (session as { user?: { id?: string } } | null)?.user?.id ?? null;
+}
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getServerSession(authOptions);
+  const userId = getSessionUserId(session);
+
+  if (!userId) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id } = await params;
+  const body = (await request.json()) as UpdateFriendRequestPayload;
+
+  const friendRequest = await prisma.friendship.findFirst({
+    where: {
+      id,
+      addresseeId: userId,
+      status: "PENDING",
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!friendRequest) {
+    return Response.json({ error: "Friend request not found." }, { status: 404 });
+  }
+
+  if (body.action === "accept") {
+    const acceptedRequest = await prisma.friendship.update({
+      where: {
+        id: friendRequest.id,
+      },
+      data: {
+        status: "ACCEPTED",
+        acceptedAt: new Date(),
+        ignoredAt: null,
+      },
+      select: {
+        id: true,
+        status: true,
+        acceptedAt: true,
+      },
+    });
+
+    return Response.json({ request: acceptedRequest });
+  }
+
+  if (body.action === "deny") {
+    await prisma.friendship.delete({
+      where: {
+        id: friendRequest.id,
+      },
+    });
+
+    return Response.json({ request: { id: friendRequest.id, status: "DENIED" } });
+  }
+
+  if (body.action === "ignore") {
+    const ignoredRequest = await prisma.friendship.update({
+      where: {
+        id: friendRequest.id,
+      },
+      data: {
+        ignoredAt: new Date(),
+      },
+      select: {
+        id: true,
+        status: true,
+        ignoredAt: true,
+      },
+    });
+
+    return Response.json({ request: ignoredRequest });
+  }
+
+  return Response.json({ error: "Choose accept, deny, or ignore." }, { status: 400 });
+}
