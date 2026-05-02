@@ -22,31 +22,23 @@ export default async function WritePage({ searchParams }: WritePageProps) {
     ? params.entryId[0]
     : params.entryId;
 
-  const draft = await prisma.entry.findFirst({
-    where: requestedEntryId
-      ? {
+  const draft = requestedEntryId
+    ? await prisma.entry.findFirst({
+        where: {
           id: requestedEntryId,
           authorId: userId,
-        }
-      : {
-          authorId: userId,
-          status: "DRAFT",
         },
-    orderBy: requestedEntryId
-      ? undefined
-      : {
-          updatedAt: "desc",
+        select: {
+          id: true,
+          title: true,
+          plainText: true,
+          content: true,
+          wordCount: true,
+          privateAuthorNote: true,
+          publicAuthorNote: true,
         },
-    select: {
-      id: true,
-      title: true,
-      plainText: true,
-      content: true,
-      wordCount: true,
-      privateAuthorNote: true,
-      publicAuthorNote: true,
-    },
-  });
+      })
+    : null;
 
   return (
     <ProtectedPageShell
