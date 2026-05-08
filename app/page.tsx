@@ -16,7 +16,7 @@ export default async function Home() {
     { href: "/library", label: "Library" },
     { href: "/explore", label: "Explore" },
     { href: "/search", label: "Search" },
-    { href: "/user", label: "User" },
+    { href: "/profile", label: "Profile" },
   ];
 
   return (
