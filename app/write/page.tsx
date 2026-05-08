@@ -36,6 +36,16 @@ export default async function WritePage({ searchParams }: WritePageProps) {
           wordCount: true,
           privateAuthorNote: true,
           publicAuthorNote: true,
+          promptId: true,
+          prompt: {
+            select: {
+              id: true,
+              title: true,
+              body: true,
+              genre: true,
+              tags: true,
+            },
+          },
         },
       })
     : null;
@@ -58,9 +68,11 @@ export default async function WritePage({ searchParams }: WritePageProps) {
                 wordCount: draft.wordCount,
                 privateAuthorNote: draft.privateAuthorNote ?? "",
                 publicAuthorNote: draft.publicAuthorNote ?? "",
+                prompt: draft.prompt,
               }
             : null
         }
+        showPromptPicker={!draft}
       />
     </ProtectedPageShell>
   );

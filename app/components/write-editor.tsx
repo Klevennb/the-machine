@@ -102,6 +102,20 @@ const DEFAULT_TOOLBAR_STATE: ToolbarState = {
 };
 
 const FONT_SIZES = ["12px", "14px", "16px", "18px", "24px", "32px"];
+const GENRES = [
+  "Fantasy",
+  "Science Fiction",
+  "Romance",
+  "Mystery",
+  "Horror",
+  "Literary",
+  "Poetry",
+  "Memoir",
+  "Thriller",
+  "Historical",
+  "Comedy",
+  "Nonfiction",
+];
 
 type DraftContent = {
   root: {
@@ -122,10 +136,20 @@ type DraftEntry = {
   wordCount: number;
   privateAuthorNote: string;
   publicAuthorNote: string;
+  prompt: WritingPrompt | null;
 };
 
 type WriteEditorProps = {
   initialDraft: DraftEntry | null;
+  showPromptPicker: boolean;
+};
+
+type WritingPrompt = {
+  id: string;
+  title: string;
+  body: string;
+  genre: string;
+  tags: string[];
 };
 
 function Placeholder() {
@@ -493,7 +517,7 @@ function CaptureDraftPlugin({ onChange }: CapturePluginProps) {
   return <OnChangePlugin onChange={handleChange} />;
 }
 
-export function WriteEditor({ initialDraft }: WriteEditorProps) {
+export function WriteEditor({ initialDraft, showPromptPicker }: WriteEditorProps) {
   const [entryId, setEntryId] = useState(initialDraft?.id ?? null);
   const [title, setTitle] = useState(initialDraft?.title ?? "");
   const [privateAuthorNote, setPrivateAuthorNote] = useState(
@@ -507,11 +531,67 @@ export function WriteEditor({ initialDraft }: WriteEditorProps) {
   const [content, setContent] = useState<DraftContent>(() =>
     normalizeInitialContent(initialDraft?.content)
   );
+  const [selectedPrompt, setSelectedPrompt] = useState<WritingPrompt | null>(
+    initialDraft?.prompt ?? null
+  );
+  const [promptGenre, setPromptGenre] = useState(GENRES[0]);
+  const [seenPromptIds, setSeenPromptIds] = useState<string[]>(
+    initialDraft?.prompt ? [initialDraft.prompt.id] : []
+  );
+  const [isLoadingPrompt, setIsLoadingPrompt] = useState(false);
+  const [promptMessage, setPromptMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState(
     initialDraft ? "Loaded saved entry." : "Entry not saved yet."
   );
   const initialEditorState = useMemo(() => JSON.stringify(content), [content]);
+
+  const requestPrompt = async (resetSeenPrompts = false) => {
+    setIsLoadingPrompt(true);
+    setPromptMessage("Finding a prompt...");
+
+    const excludedIds = resetSeenPrompts ? [] : seenPromptIds;
+    const query = new URLSearchParams({
+      genre: promptGenre,
+    });
+
+    if (excludedIds.length > 0) {
+      query.set("exclude", excludedIds.join(","));
+    }
+
+    try {
+      const response = await fetch(`/api/prompts/random?${query.toString()}`);
+      const data = (await response.json()) as {
+        error?: string;
+        prompt?: WritingPrompt;
+      };
+
+      if (!response.ok || !data.prompt) {
+        if (!resetSeenPrompts && response.status === 404 && seenPromptIds.length > 0) {
+          await requestPrompt(true);
+          return;
+        }
+
+        setPromptMessage(data.error ?? "Unable to load a prompt.");
+        return;
+      }
+
+      const nextPrompt = data.prompt;
+
+      setSelectedPrompt(nextPrompt);
+      setSeenPromptIds((current) =>
+        resetSeenPrompts ? [nextPrompt.id] : [...current, nextPrompt.id]
+      );
+      setPromptMessage("Prompt selected.");
+      setSaveMessage((current) =>
+        current.startsWith("Saved") ? "Draft has unsaved changes." : current
+      );
+    } catch {
+      setPromptMessage("Unable to load a prompt.");
+    } finally {
+      setIsLoadingPrompt(false);
+    }
+  };
 
   const saveDraft = async () => {
     setIsSaving(true);
@@ -531,6 +611,7 @@ export function WriteEditor({ initialDraft }: WriteEditorProps) {
           wordCount,
           privateAuthorNote,
           publicAuthorNote,
+          promptId: selectedPrompt?.id ?? null,
         }),
       });
 
@@ -563,6 +644,78 @@ export function WriteEditor({ initialDraft }: WriteEditorProps) {
       }}
     >
       <div className="rounded-[1.75rem] border border-slate-200 bg-white">
+        {showPromptPicker ? (
+          <div className="mb-4 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <label className="block min-w-52">
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Prompt genre
+                </span>
+                <select
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                  onChange={(event) => {
+                    setPromptGenre(event.target.value);
+                    setSeenPromptIds([]);
+                    setPromptMessage("");
+                  }}
+                  value={promptGenre}
+                >
+                  {GENRES.map((genre) => (
+                    <option key={genre} value={genre}>
+                      {genre}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <button
+                className="rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+                disabled={isLoadingPrompt}
+                onClick={() => requestPrompt()}
+                type="button"
+              >
+                {isLoadingPrompt
+                  ? "Finding..."
+                  : selectedPrompt
+                    ? "Try Another Prompt"
+                    : "Request Prompt"}
+              </button>
+            </div>
+
+            {selectedPrompt ? (
+              <article className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2 className="break-words text-lg font-semibold text-slate-950">
+                      {selectedPrompt.title}
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {selectedPrompt.genre}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedPrompt.tags.map((tag) => (
+                      <span
+                        className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600"
+                        key={tag}
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-slate-700">
+                  {selectedPrompt.body}
+                </p>
+              </article>
+            ) : null}
+
+            {promptMessage ? (
+              <p className="mt-3 text-sm text-slate-500">{promptMessage}</p>
+            ) : null}
+          </div>
+        ) : null}
+
         <div className="mb-4 grid gap-4 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-slate-700">
