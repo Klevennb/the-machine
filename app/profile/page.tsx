@@ -1,11 +1,15 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
+import { ProfileSettings } from "@/app/components/profile-settings";
 import { ProtectedPageShell } from "@/app/components/protected-page-shell";
-import { UserSettings } from "@/app/components/user-settings";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-export default async function UserPage() {
+function getDisplayName(user: { name: string | null; username: string | null }) {
+  return user.name?.trim() || user.username?.trim() || "Unnamed writer";
+}
+
+export default async function ProfilePage() {
   const session = await getServerSession(authOptions);
   const userId = (session?.user as { id?: string } | undefined)?.id ?? null;
 
@@ -49,6 +53,48 @@ export default async function UserPage() {
           updatedAt: true,
         },
       },
+      sentFriendRequests: {
+        where: {
+          status: "ACCEPTED",
+        },
+        orderBy: {
+          acceptedAt: "desc",
+        },
+        select: {
+          id: true,
+          acceptedAt: true,
+          createdAt: true,
+          addressee: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+              bio: true,
+            },
+          },
+        },
+      },
+      receivedFriends: {
+        where: {
+          status: "ACCEPTED",
+        },
+        orderBy: {
+          acceptedAt: "desc",
+        },
+        select: {
+          id: true,
+          acceptedAt: true,
+          createdAt: true,
+          requester: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+              bio: true,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -58,12 +104,38 @@ export default async function UserPage() {
 
   return (
     <ProtectedPageShell
-      title="User"
+      title="Profile"
       description="Manage your profile, writing goals, feed curation, and reading preferences."
       panelClassName="max-w-7xl"
       showHomeLink
     >
-      <UserSettings
+      <ProfileSettings
+        initialFriends={[
+          ...user.sentFriendRequests.map((friendship) => ({
+            id: friendship.addressee.id,
+            friendshipId: friendship.id,
+            displayName: getDisplayName(friendship.addressee),
+            username: friendship.addressee.username,
+            bio: friendship.addressee.bio,
+            friendsSince: (
+              friendship.acceptedAt ?? friendship.createdAt
+            ).toISOString(),
+          })),
+          ...user.receivedFriends.map((friendship) => ({
+            id: friendship.requester.id,
+            friendshipId: friendship.id,
+            displayName: getDisplayName(friendship.requester),
+            username: friendship.requester.username,
+            bio: friendship.requester.bio,
+            friendsSince: (
+              friendship.acceptedAt ?? friendship.createdAt
+            ).toISOString(),
+          })),
+        ].sort(
+          (left, right) =>
+            new Date(right.friendsSince).getTime() -
+            new Date(left.friendsSince).getTime()
+        )}
         initialGoals={user.wordGoals.map((goal) => ({
           ...goal,
           createdAt: goal.createdAt.toISOString(),

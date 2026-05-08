@@ -239,14 +239,12 @@ export function UserSearch({ initialRequests }: UserSearchProps) {
                     {usernameLabel(user.username)}
                   </p>
                 </div>
-                {user.relationship?.status === "ACCEPTED" ? (
-                  <Link
-                    className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                    href={`/users/${user.id}`}
-                  >
-                    View Profile
-                  </Link>
-                ) : null}
+                <Link
+                  className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  href={`/users/${user.id}`}
+                >
+                  View Profile
+                </Link>
               </div>
               {user.bio ? (
                 <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">

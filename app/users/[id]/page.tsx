@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
+import { ProfileFriendButton } from "@/app/components/profile-friend-button";
 import { ProtectedPageShell } from "@/app/components/protected-page-shell";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -45,11 +46,10 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
   const { id: profileUserId } = await params;
   const isOwnProfile = viewerId === profileUserId;
 
-  const friendship = isOwnProfile
+  const relationship = isOwnProfile
     ? null
     : await prisma.friendship.findFirst({
         where: {
-          status: "ACCEPTED",
           OR: [
             {
               requesterId: viewerId,
@@ -63,9 +63,10 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
         },
         select: {
           id: true,
+          requesterId: true,
+          status: true,
         },
       });
-  const isFriend = Boolean(friendship);
 
   const user = await prisma.user.findUnique({
     where: {
@@ -77,7 +78,6 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
       username: true,
       bio: true,
       email: true,
-      timezone: true,
       profileVisibility: true,
       showEmailOnProfile: true,
       favoriteGenres: true,
@@ -85,9 +85,7 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
       entries: {
         where: {
           status: "PUBLISHED",
-          visibility: {
-            in: isOwnProfile || isFriend ? ["PUBLIC", "FRIENDS"] : ["PUBLIC"],
-          },
+          visibility: "PUBLIC",
         },
         orderBy: {
           publishedAt: "desc",
@@ -109,27 +107,29 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
     notFound();
   }
 
-  const canViewProfile =
+  const canViewProfileDetails =
     isOwnProfile ||
-    isFriend ||
     user.profileVisibility === "PUBLIC" ||
     user.profileVisibility === "MEMBERS";
 
-  if (!canViewProfile) {
-    notFound();
-  }
-
   const displayName = getDisplayName(user);
-  const visibleEmail = user.showEmailOnProfile ? user.email : null;
+  const visibleEmail =
+    canViewProfileDetails && user.showEmailOnProfile ? user.email : null;
+  const visibleRelationship = relationship
+    ? {
+        id: relationship.id,
+        status: relationship.status,
+        direction:
+          relationship.requesterId === viewerId
+            ? ("outgoing" as const)
+            : ("incoming" as const),
+      }
+    : null;
 
   return (
     <ProtectedPageShell
       title={displayName}
-      description={
-        isFriend
-          ? "You are friends with this writer. Their friends-only published stories are visible here."
-          : "Public profile details and published public stories are visible here."
-      }
+      description="Public profile details and published public stories are visible here."
       panelClassName="max-w-6xl"
       showHomeLink
     >
@@ -140,14 +140,14 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
               <span className="font-medium text-slate-800">Username:</span>{" "}
               {user.username ? `@${user.username}` : "Not set"}
             </p>
-            <p>
-              <span className="font-medium text-slate-800">Member since:</span>{" "}
-              {formatDate(user.createdAt)}
-            </p>
-            <p>
-              <span className="font-medium text-slate-800">Timezone:</span>{" "}
-              {user.timezone}
-            </p>
+            {canViewProfileDetails ? (
+              <p>
+                <span className="font-medium text-slate-800">
+                  Member since:
+                </span>{" "}
+                {formatDate(user.createdAt)}
+              </p>
+            ) : null}
             {visibleEmail ? (
               <p>
                 <span className="font-medium text-slate-800">Email:</span>{" "}
@@ -156,7 +156,13 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
             ) : null}
           </div>
 
-          {user.bio ? (
+          {!canViewProfileDetails ? (
+            <p className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-600">
+              This writer has not made profile details public.
+            </p>
+          ) : null}
+
+          {canViewProfileDetails && user.bio ? (
             <div className="mt-5">
               <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
                 Bio
@@ -167,7 +173,7 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
             </div>
           ) : null}
 
-          {user.favoriteGenres.length > 0 ? (
+          {canViewProfileDetails && user.favoriteGenres.length > 0 ? (
             <div className="mt-5">
               <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
                 Favorite Genres
@@ -182,6 +188,15 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
                   </span>
                 ))}
               </div>
+            </div>
+          ) : null}
+
+          {!isOwnProfile ? (
+            <div className="mt-5 border-t border-slate-200 pt-5">
+              <ProfileFriendButton
+                initialRelationship={visibleRelationship}
+                profileUserId={user.id}
+              />
             </div>
           ) : null}
         </aside>

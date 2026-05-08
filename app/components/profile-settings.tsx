@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 const GENRES = [
@@ -47,9 +48,19 @@ type WordGoal = {
   updatedAt: string;
 };
 
-type UserSettingsProps = {
+type Friend = {
+  id: string;
+  friendshipId: string;
+  displayName: string;
+  username: string | null;
+  bio: string | null;
+  friendsSince: string;
+};
+
+type ProfileSettingsProps = {
   initialUser: UserProfile;
   initialGoals: WordGoal[];
+  initialFriends: Friend[];
 };
 
 type GoalDraft = {
@@ -65,6 +76,10 @@ function formatDate(value: string) {
     day: "numeric",
     year: "numeric",
   });
+}
+
+function usernameLabel(username: string | null) {
+  return username ? `@${username}` : "No username";
 }
 
 function Toggle({
@@ -133,7 +148,11 @@ function GenrePicker({
   );
 }
 
-export function UserSettings({ initialUser, initialGoals }: UserSettingsProps) {
+export function ProfileSettings({
+  initialUser,
+  initialGoals,
+  initialFriends,
+}: ProfileSettingsProps) {
   const [profile, setProfile] = useState(initialUser);
   const [goals, setGoals] = useState(initialGoals);
   const [profileMessage, setProfileMessage] = useState("");
@@ -160,7 +179,7 @@ export function UserSettings({ initialUser, initialGoals }: UserSettingsProps) {
     setProfileMessage("Saving settings...");
 
     try {
-      const response = await fetch("/api/user/profile", {
+      const response = await fetch("/api/profile/settings", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -195,7 +214,7 @@ export function UserSettings({ initialUser, initialGoals }: UserSettingsProps) {
     setGoalMessage("Creating goal...");
 
     try {
-      const response = await fetch("/api/user/goals", {
+      const response = await fetch("/api/profile/goals", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -233,7 +252,7 @@ export function UserSettings({ initialUser, initialGoals }: UserSettingsProps) {
     setGoalMessage("Saving goal...");
 
     try {
-      const response = await fetch(`/api/user/goals/${goal.id}`, {
+      const response = await fetch(`/api/profile/goals/${goal.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -415,23 +434,76 @@ export function UserSettings({ initialUser, initialGoals }: UserSettingsProps) {
               }
             />
           </div>
-          <div className="mt-5 flex flex-wrap items-center gap-3">
-            <button
-              className="rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-              disabled={savingProfile}
-              onClick={saveProfile}
-              type="button"
-            >
-              {savingProfile ? "Saving..." : "Save Profile"}
-            </button>
-            {profileMessage ? (
-              <span className="text-sm text-slate-500">{profileMessage}</span>
-            ) : null}
-          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            className="rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+            disabled={savingProfile}
+            onClick={saveProfile}
+            type="button"
+          >
+            {savingProfile ? "Saving..." : "Save Profile"}
+          </button>
+          {profileMessage ? (
+            <span className="text-sm text-slate-500">{profileMessage}</span>
+          ) : null}
         </div>
       </section>
 
       <section className="space-y-4">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-xl font-semibold text-slate-950">Friends</h2>
+            <Link
+              className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              href="/search"
+            >
+              Find Writers
+            </Link>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            {initialFriends.length === 0 ? (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                No friends yet.
+              </div>
+            ) : null}
+
+            {initialFriends.map((friend) => (
+              <article
+                className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                key={friend.friendshipId}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="break-words font-semibold text-slate-950">
+                      {friend.displayName}
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {usernameLabel(friend.username)}
+                    </p>
+                  </div>
+                  <Link
+                    className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                    href={`/users/${friend.id}`}
+                  >
+                    View Profile
+                  </Link>
+                </div>
+                {friend.bio ? (
+                  <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">
+                    {friend.bio}
+                  </p>
+                ) : null}
+                <p className="mt-3 text-xs text-slate-500">
+                  Friends since {formatDate(friend.friendsSince)}
+                </p>
+              </article>
+            ))}
+          </div>
+        </div>
+
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
           <h2 className="text-xl font-semibold text-slate-950">Goals</h2>
           <div className="mt-4 grid gap-3">

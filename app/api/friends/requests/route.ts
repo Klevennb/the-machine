@@ -147,6 +147,13 @@ export async function POST(request: Request) {
     );
   }
 
+  if (existingRelationship?.status === "BLOCKED") {
+    return Response.json(
+      { error: "Friend requests are unavailable for this writer." },
+      { status: 409 }
+    );
+  }
+
   const friendRequest = await prisma.friendship.create({
     data: {
       requesterId: userId,
