@@ -14,6 +14,7 @@ type SaveDraftPayload = {
   wordCount?: number;
   privateAuthorNote?: string;
   publicAuthorNote?: string;
+  promptId?: string | null;
 };
 
 function getSessionUserId(session: unknown) {
@@ -93,6 +94,10 @@ export async function POST(request: Request) {
     typeof body.privateAuthorNote === "string" ? body.privateAuthorNote : "";
   const publicAuthorNote =
     typeof body.publicAuthorNote === "string" ? body.publicAuthorNote : "";
+  const promptId =
+    typeof body.promptId === "string" && body.promptId.trim()
+      ? body.promptId.trim()
+      : null;
   const wordCount = Number.isFinite(body.wordCount) ? Math.max(0, body.wordCount ?? 0) : 0;
   const content =
     body.content === undefined || body.content === null
@@ -107,6 +112,7 @@ export async function POST(request: Request) {
     summary: getSummary(plainText),
     privateAuthorNote: privateAuthorNote.trim() || null,
     publicAuthorNote: publicAuthorNote.trim() || null,
+    promptId,
     isStandalone: true,
   };
 
