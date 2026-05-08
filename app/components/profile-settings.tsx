@@ -33,17 +33,22 @@ type UserProfile = {
   feedIncludesPublic: boolean;
   feedIncludesFriends: boolean;
   feedIncludesPrompts: boolean;
+  dailyTargetWords: number;
+  streakGoalDays: number;
+  showProfileSection: boolean;
+  showPreferencesSection: boolean;
+  showFeedSection: boolean;
+  showGoalsSection: boolean;
+  showFriendsSection: boolean;
   updatedAt: string;
 };
 
-type WordGoal = {
+type CustomGoal = {
   id: string;
   title: string;
   description: string | null;
-  dailyTargetWords: number;
-  isActive: boolean;
-  currentStreakDays: number;
-  bestStreakDays: number;
+  isCompleted: boolean;
+  completedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -59,16 +64,32 @@ type Friend = {
 
 type ProfileSettingsProps = {
   initialUser: UserProfile;
-  initialGoals: WordGoal[];
+  initialGoals: CustomGoal[];
   initialFriends: Friend[];
 };
 
 type GoalDraft = {
   title: string;
   description: string;
-  dailyTargetWords: number;
-  isActive: boolean;
 };
+
+type SectionVisibilityKey =
+  | "showProfileSection"
+  | "showPreferencesSection"
+  | "showFeedSection"
+  | "showGoalsSection"
+  | "showFriendsSection";
+
+const PROFILE_SECTIONS: Array<{
+  key: SectionVisibilityKey;
+  label: string;
+}> = [
+  { key: "showProfileSection", label: "Profile" },
+  { key: "showPreferencesSection", label: "Preferences" },
+  { key: "showFeedSection", label: "Feed" },
+  { key: "showGoalsSection", label: "Goals" },
+  { key: "showFriendsSection", label: "Friends" },
+];
 
 function formatDate(value: string) {
   return new Date(value).toLocaleDateString(undefined, {
@@ -162,8 +183,6 @@ export function ProfileSettings({
   const [newGoal, setNewGoal] = useState<GoalDraft>({
     title: "",
     description: "",
-    dailyTargetWords: 500,
-    isActive: true,
   });
 
   const updateProfile = <Key extends keyof UserProfile>(
@@ -224,7 +243,7 @@ export function ProfileSettings({
 
       const data = (await response.json()) as {
         error?: string;
-        goal?: WordGoal;
+        goal?: CustomGoal;
       };
 
       if (!response.ok || !data.goal) {
@@ -232,12 +251,10 @@ export function ProfileSettings({
         return;
       }
 
-      setGoals((current) => [data.goal as WordGoal, ...current]);
+      setGoals((current) => [data.goal as CustomGoal, ...current]);
       setNewGoal({
         title: "",
         description: "",
-        dailyTargetWords: 500,
-        isActive: true,
       });
       setGoalMessage("Goal created.");
     } catch {
@@ -247,7 +264,7 @@ export function ProfileSettings({
     }
   };
 
-  const updateGoal = async (goal: WordGoal) => {
+  const updateGoal = async (goal: CustomGoal) => {
     setSavingGoalId(goal.id);
     setGoalMessage("Saving goal...");
 
@@ -262,7 +279,7 @@ export function ProfileSettings({
 
       const data = (await response.json()) as {
         error?: string;
-        goal?: WordGoal;
+        goal?: CustomGoal;
       };
 
       if (!response.ok || !data.goal) {
@@ -272,7 +289,9 @@ export function ProfileSettings({
 
       setGoals((current) =>
         current.map((currentGoal) =>
-          currentGoal.id === data.goal?.id ? (data.goal as WordGoal) : currentGoal
+          currentGoal.id === data.goal?.id
+            ? (data.goal as CustomGoal)
+            : currentGoal
         )
       );
       setGoalMessage("Goal saved.");
@@ -283,10 +302,72 @@ export function ProfileSettings({
     }
   };
 
-  const patchGoalState = <Key extends keyof WordGoal>(
+  const completeGoal = async (goal: CustomGoal) => {
+    setSavingGoalId(goal.id);
+    setGoalMessage("Completing goal...");
+
+    try {
+      const response = await fetch(`/api/profile/goals/${goal.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ isCompleted: true }),
+      });
+
+      const data = (await response.json()) as {
+        error?: string;
+        goal?: CustomGoal;
+      };
+
+      if (!response.ok || !data.goal) {
+        setGoalMessage(data.error ?? "Unable to complete goal.");
+        return;
+      }
+
+      setGoals((current) =>
+        current.filter((currentGoal) => currentGoal.id !== goal.id)
+      );
+      setGoalMessage("Goal completed.");
+    } catch {
+      setGoalMessage("Unable to complete goal.");
+    } finally {
+      setSavingGoalId(null);
+    }
+  };
+
+  const deleteGoal = async (goalId: string) => {
+    setSavingGoalId(goalId);
+    setGoalMessage("Deleting goal...");
+
+    try {
+      const response = await fetch(`/api/profile/goals/${goalId}`, {
+        method: "DELETE",
+      });
+
+      const data = (await response.json()) as {
+        error?: string;
+        goal?: { id: string };
+      };
+
+      if (!response.ok || !data.goal) {
+        setGoalMessage(data.error ?? "Unable to delete goal.");
+        return;
+      }
+
+      setGoals((current) => current.filter((goal) => goal.id !== goalId));
+      setGoalMessage("Goal deleted.");
+    } catch {
+      setGoalMessage("Unable to delete goal.");
+    } finally {
+      setSavingGoalId(null);
+    }
+  };
+
+  const patchGoalState = <Key extends keyof CustomGoal>(
     goalId: string,
     key: Key,
-    value: WordGoal[Key]
+    value: CustomGoal[Key]
   ) => {
     setGoals((current) =>
       current.map((goal) =>
@@ -297,332 +378,406 @@ export function ProfileSettings({
   };
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
-      <section className="space-y-6">
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-          <h2 className="text-xl font-semibold text-slate-950">Profile</h2>
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <label className="block">
-              <span className="mb-2 block text-sm font-medium text-slate-700">
-                Display name
-              </span>
-              <input
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
-                onChange={(event) => updateProfile("name", event.target.value)}
-                value={profile.name ?? ""}
-              />
-            </label>
-            <label className="block">
-              <span className="mb-2 block text-sm font-medium text-slate-700">
-                Username
-              </span>
-              <input
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
-                onChange={(event) =>
-                  updateProfile("username", event.target.value)
-                }
-                value={profile.username ?? ""}
-              />
-            </label>
-            <label className="block">
-              <span className="mb-2 block text-sm font-medium text-slate-700">
-                Email
-              </span>
-              <input
-                className="w-full rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-500"
-                readOnly
-                value={profile.email ?? ""}
-              />
-            </label>
-            <label className="block">
-              <span className="mb-2 block text-sm font-medium text-slate-700">
-                Timezone
-              </span>
-              <input
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
-                onChange={(event) =>
-                  updateProfile("timezone", event.target.value)
-                }
-                value={profile.timezone}
-              />
-            </label>
-          </div>
-          <label className="mt-4 block">
-            <span className="mb-2 block text-sm font-medium text-slate-700">
-              Bio
-            </span>
-            <textarea
-              className="min-h-32 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
-              onChange={(event) => updateProfile("bio", event.target.value)}
-              value={profile.bio ?? ""}
-            />
-          </label>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-          <h2 className="text-xl font-semibold text-slate-950">Preferences</h2>
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <label className="block">
-              <span className="mb-2 block text-sm font-medium text-slate-700">
-                Profile visibility
-              </span>
-              <select
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
-                onChange={(event) =>
-                  updateProfile(
-                    "profileVisibility",
-                    event.target.value as UserProfile["profileVisibility"]
-                  )
-                }
-                value={profile.profileVisibility}
-              >
-                <option value="PUBLIC">Public</option>
-                <option value="MEMBERS">Members only</option>
-                <option value="PRIVATE">Private</option>
-              </select>
-            </label>
-            <div className="grid gap-3">
-              <Toggle
-                checked={profile.showEmailOnProfile}
-                label="Show email on profile"
-                onChange={(checked) =>
-                  updateProfile("showEmailOnProfile", checked)
-                }
-              />
-              <Toggle
-                checked={profile.allowNsfwStories}
-                label="Show NSFW stories"
-                onChange={(checked) => updateProfile("allowNsfwStories", checked)}
-              />
-            </div>
-          </div>
-
-          <div className="mt-5 grid gap-5">
-            <GenrePicker
-              label="Favorite genres"
-              onChange={(genres) => updateProfile("favoriteGenres", genres)}
-              selectedGenres={profile.favoriteGenres}
-            />
-            <GenrePicker
-              label="Muted genres"
-              onChange={(genres) => updateProfile("mutedGenres", genres)}
-              selectedGenres={profile.mutedGenres}
-            />
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-          <h2 className="text-xl font-semibold text-slate-950">Feed</h2>
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
+    <div className="space-y-6">
+      <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+        <h2 className="text-xl font-semibold text-slate-950">
+          Visible Sections
+        </h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {PROFILE_SECTIONS.map((section) => (
             <Toggle
-              checked={profile.feedIncludesPublic}
-              label="Public stories"
-              onChange={(checked) => updateProfile("feedIncludesPublic", checked)}
+              checked={profile[section.key]}
+              key={section.key}
+              label={section.label}
+              onChange={(checked) => updateProfile(section.key, checked)}
             />
-            <Toggle
-              checked={profile.feedIncludesFriends}
-              label="Friend stories"
-              onChange={(checked) =>
-                updateProfile("feedIncludesFriends", checked)
-              }
-            />
-            <Toggle
-              checked={profile.feedIncludesPrompts}
-              label="Prompt responses"
-              onChange={(checked) =>
-                updateProfile("feedIncludesPrompts", checked)
-              }
-            />
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            className="rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-            disabled={savingProfile}
-            onClick={saveProfile}
-            type="button"
-          >
-            {savingProfile ? "Saving..." : "Save Profile"}
-          </button>
-          {profileMessage ? (
-            <span className="text-sm text-slate-500">{profileMessage}</span>
-          ) : null}
+          ))}
         </div>
       </section>
 
-      <section className="space-y-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-xl font-semibold text-slate-950">Friends</h2>
-            <Link
-              className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-              href="/search"
-            >
-              Find Writers
-            </Link>
-          </div>
-
-          <div className="mt-4 space-y-3">
-            {initialFriends.length === 0 ? (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                No friends yet.
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
+        <section className="space-y-6">
+          {profile.showProfileSection ? (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <h2 className="text-xl font-semibold text-slate-950">Profile</h2>
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Display name
+                  </span>
+                  <input
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                    onChange={(event) =>
+                      updateProfile("name", event.target.value)
+                    }
+                    value={profile.name ?? ""}
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Username
+                  </span>
+                  <input
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                    onChange={(event) =>
+                      updateProfile("username", event.target.value)
+                    }
+                    value={profile.username ?? ""}
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Email
+                  </span>
+                  <input
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-500"
+                    readOnly
+                    value={profile.email ?? ""}
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Timezone
+                  </span>
+                  <input
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                    onChange={(event) =>
+                      updateProfile("timezone", event.target.value)
+                    }
+                    value={profile.timezone}
+                  />
+                </label>
               </div>
-            ) : null}
-
-            {initialFriends.map((friend) => (
-              <article
-                className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
-                key={friend.friendshipId}
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h3 className="break-words font-semibold text-slate-950">
-                      {friend.displayName}
-                    </h3>
-                    <p className="mt-1 text-sm text-slate-500">
-                      {usernameLabel(friend.username)}
-                    </p>
-                  </div>
-                  <Link
-                    className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-                    href={`/users/${friend.id}`}
-                  >
-                    View Profile
-                  </Link>
-                </div>
-                {friend.bio ? (
-                  <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">
-                    {friend.bio}
-                  </p>
-                ) : null}
-                <p className="mt-3 text-xs text-slate-500">
-                  Friends since {formatDate(friend.friendsSince)}
-                </p>
-              </article>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
-          <h2 className="text-xl font-semibold text-slate-950">Goals</h2>
-          <div className="mt-4 grid gap-3">
-            <input
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
-              onChange={(event) =>
-                setNewGoal((current) => ({
-                  ...current,
-                  title: event.target.value,
-                }))
-              }
-              placeholder="Goal name"
-              value={newGoal.title}
-            />
-            <textarea
-              className="min-h-24 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
-              onChange={(event) =>
-                setNewGoal((current) => ({
-                  ...current,
-                  description: event.target.value,
-                }))
-              }
-              placeholder="Short description"
-              value={newGoal.description}
-            />
-            <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-              <input
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
-                min={1}
-                onChange={(event) =>
-                  setNewGoal((current) => ({
-                    ...current,
-                    dailyTargetWords: Number(event.target.value),
-                  }))
-                }
-                type="number"
-                value={newGoal.dailyTargetWords}
-              />
-              <button
-                className="rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-                disabled={savingGoalId === "new"}
-                onClick={createGoal}
-                type="button"
-              >
-                {savingGoalId === "new" ? "Adding..." : "Add Goal"}
-              </button>
-            </div>
-          </div>
-          {goalMessage ? (
-            <p className="mt-3 text-sm text-slate-500">{goalMessage}</p>
-          ) : null}
-        </div>
-
-        {goals.map((goal) => (
-          <div
-            className="rounded-2xl border border-slate-200 bg-slate-50 p-5"
-            key={goal.id}
-          >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="text-sm text-slate-500">
-                Created {formatDate(goal.createdAt)}
-              </span>
-              <Toggle
-                checked={goal.isActive}
-                label="Active"
-                onChange={(checked) => patchGoalState(goal.id, "isActive", checked)}
-              />
-            </div>
-            <div className="mt-4 grid gap-3">
-              <input
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-medium outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
-                onChange={(event) =>
-                  patchGoalState(goal.id, "title", event.target.value)
-                }
-                value={goal.title}
-              />
-              <textarea
-                className="min-h-24 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
-                onChange={(event) =>
-                  patchGoalState(goal.id, "description", event.target.value)
-                }
-                value={goal.description ?? ""}
-              />
-              <label className="block">
+              <label className="mt-4 block">
                 <span className="mb-2 block text-sm font-medium text-slate-700">
-                  Daily target words
+                  Bio
                 </span>
-                <input
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
-                  min={1}
-                  onChange={(event) =>
-                    patchGoalState(
-                      goal.id,
-                      "dailyTargetWords",
-                      Number(event.target.value)
-                    )
-                  }
-                  type="number"
-                  value={goal.dailyTargetWords}
+                <textarea
+                  className="min-h-32 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                  onChange={(event) => updateProfile("bio", event.target.value)}
+                  value={profile.bio ?? ""}
                 />
               </label>
             </div>
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex gap-4 text-sm text-slate-500">
-                <span>{goal.currentStreakDays} day streak</span>
-                <span>Best {goal.bestStreakDays}</span>
+          ) : null}
+
+          {profile.showPreferencesSection ? (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <h2 className="text-xl font-semibold text-slate-950">
+                Preferences
+              </h2>
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Profile visibility
+                  </span>
+                  <select
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                    onChange={(event) =>
+                      updateProfile(
+                        "profileVisibility",
+                        event.target.value as UserProfile["profileVisibility"]
+                      )
+                    }
+                    value={profile.profileVisibility}
+                  >
+                    <option value="PUBLIC">Public</option>
+                    <option value="MEMBERS">Members only</option>
+                    <option value="PRIVATE">Private</option>
+                  </select>
+                </label>
+                <div className="grid gap-3">
+                  <Toggle
+                    checked={profile.showEmailOnProfile}
+                    label="Show email on profile"
+                    onChange={(checked) =>
+                      updateProfile("showEmailOnProfile", checked)
+                    }
+                  />
+                  <Toggle
+                    checked={profile.allowNsfwStories}
+                    label="Show NSFW stories"
+                    onChange={(checked) =>
+                      updateProfile("allowNsfwStories", checked)
+                    }
+                  />
+                </div>
               </div>
-              <button
-                className="rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={savingGoalId === goal.id}
-                onClick={() => updateGoal(goal)}
-                type="button"
-              >
-                {savingGoalId === goal.id ? "Saving..." : "Save Goal"}
-              </button>
+
+              <div className="mt-5 grid gap-5">
+                <GenrePicker
+                  label="Favorite genres"
+                  onChange={(genres) => updateProfile("favoriteGenres", genres)}
+                  selectedGenres={profile.favoriteGenres}
+                />
+                <GenrePicker
+                  label="Muted genres"
+                  onChange={(genres) => updateProfile("mutedGenres", genres)}
+                  selectedGenres={profile.mutedGenres}
+                />
+              </div>
             </div>
+          ) : null}
+
+          {profile.showFeedSection ? (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <h2 className="text-xl font-semibold text-slate-950">Feed</h2>
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                <Toggle
+                  checked={profile.feedIncludesPublic}
+                  label="Public stories"
+                  onChange={(checked) =>
+                    updateProfile("feedIncludesPublic", checked)
+                  }
+                />
+                <Toggle
+                  checked={profile.feedIncludesFriends}
+                  label="Friend stories"
+                  onChange={(checked) =>
+                    updateProfile("feedIncludesFriends", checked)
+                  }
+                />
+                <Toggle
+                  checked={profile.feedIncludesPrompts}
+                  label="Prompt responses"
+                  onChange={(checked) =>
+                    updateProfile("feedIncludesPrompts", checked)
+                  }
+                />
+              </div>
+            </div>
+          ) : null}
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              className="rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+              disabled={savingProfile}
+              onClick={saveProfile}
+              type="button"
+            >
+              {savingProfile ? "Saving..." : "Save Profile"}
+            </button>
+            {profileMessage ? (
+              <span className="text-sm text-slate-500">{profileMessage}</span>
+            ) : null}
           </div>
-        ))}
-      </section>
+        </section>
+
+        <section className="space-y-4">
+          {profile.showGoalsSection ? (
+            <div className="rounded-2xl border border-slate-200 bg-white p-5">
+              <h2 className="text-xl font-semibold text-slate-950">Goals</h2>
+
+              <div className="mt-4 border-t border-slate-200 pt-4">
+                <h3 className="font-semibold text-slate-950">Daily Words</h3>
+                <label className="mt-3 block">
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Daily target words
+                  </span>
+                  <input
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                    min={1}
+                    onChange={(event) =>
+                      updateProfile(
+                        "dailyTargetWords",
+                        Number(event.target.value)
+                      )
+                    }
+                    type="number"
+                    value={profile.dailyTargetWords}
+                  />
+                </label>
+              </div>
+
+              <div className="mt-5 border-t border-slate-200 pt-4">
+                <h3 className="font-semibold text-slate-950">Streak Goals</h3>
+                <label className="mt-3 block">
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Streak goal days
+                  </span>
+                  <input
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                    min={1}
+                    onChange={(event) =>
+                      updateProfile("streakGoalDays", Number(event.target.value))
+                    }
+                    type="number"
+                    value={profile.streakGoalDays}
+                  />
+                </label>
+              </div>
+
+              <div className="mt-5 border-t border-slate-200 pt-4">
+                <h3 className="font-semibold text-slate-950">Custom Goal</h3>
+                <div className="mt-3 grid gap-3">
+                  <input
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                    onChange={(event) =>
+                      setNewGoal((current) => ({
+                        ...current,
+                        title: event.target.value,
+                      }))
+                    }
+                    placeholder="Goal name"
+                    value={newGoal.title}
+                  />
+                  <textarea
+                    className="min-h-24 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                    onChange={(event) =>
+                      setNewGoal((current) => ({
+                        ...current,
+                        description: event.target.value,
+                      }))
+                    }
+                    placeholder="Short description"
+                    value={newGoal.description}
+                  />
+                  <button
+                    className="w-full rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400 sm:w-auto"
+                    disabled={savingGoalId === "new"}
+                    onClick={createGoal}
+                    type="button"
+                  >
+                    {savingGoalId === "new" ? "Adding..." : "Add Goal"}
+                  </button>
+                </div>
+                {goalMessage ? (
+                  <p className="mt-3 text-sm text-slate-500">{goalMessage}</p>
+                ) : null}
+              </div>
+
+              <div className="mt-5 border-t border-slate-200 pt-4">
+                <h3 className="font-semibold text-slate-950">Created Goals</h3>
+                <div className="mt-3 space-y-4">
+                  {goals.length === 0 ? (
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                      No custom goals yet.
+                    </div>
+                  ) : null}
+
+                  {goals.map((goal) => (
+                    <div
+                      className="rounded-2xl border border-slate-200 bg-slate-50 p-5"
+                      key={goal.id}
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <span className="text-sm text-slate-500">
+                          Created {formatDate(goal.createdAt)}
+                        </span>
+                        <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
+                          Custom
+                        </span>
+                      </div>
+                      <div className="mt-4 grid gap-3">
+                        <input
+                          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-medium outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                          onChange={(event) =>
+                            patchGoalState(goal.id, "title", event.target.value)
+                          }
+                          value={goal.title}
+                        />
+                        <textarea
+                          className="min-h-24 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                          onChange={(event) =>
+                            patchGoalState(
+                              goal.id,
+                              "description",
+                              event.target.value
+                            )
+                          }
+                          value={goal.description ?? ""}
+                        />
+                      </div>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <button
+                          className="rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                          disabled={savingGoalId === goal.id}
+                          onClick={() => updateGoal(goal)}
+                          type="button"
+                        >
+                          {savingGoalId === goal.id ? "Saving..." : "Save Goal"}
+                        </button>
+                        <button
+                          className="rounded-full border border-emerald-200 bg-white px-5 py-2.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+                          disabled={savingGoalId === goal.id}
+                          onClick={() => completeGoal(goal)}
+                          type="button"
+                        >
+                          Complete
+                        </button>
+                        <button
+                          className="rounded-full border border-red-200 bg-white px-5 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                          disabled={savingGoalId === goal.id}
+                          onClick={() => deleteGoal(goal.id)}
+                          type="button"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {profile.showFriendsSection ? (
+            <div className="rounded-2xl border border-slate-200 bg-white p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-xl font-semibold text-slate-950">
+                  Friends
+                </h2>
+                <Link
+                  className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  href="/search"
+                >
+                  Find Writers
+                </Link>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                {initialFriends.length === 0 ? (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                    No friends yet.
+                  </div>
+                ) : null}
+
+                {initialFriends.map((friend) => (
+                  <article
+                    className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                    key={friend.friendshipId}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="break-words font-semibold text-slate-950">
+                          {friend.displayName}
+                        </h3>
+                        <p className="mt-1 text-sm text-slate-500">
+                          {usernameLabel(friend.username)}
+                        </p>
+                      </div>
+                      <Link
+                        className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                        href={`/users/${friend.id}`}
+                      >
+                        View Profile
+                      </Link>
+                    </div>
+                    {friend.bio ? (
+                      <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">
+                        {friend.bio}
+                      </p>
+                    ) : null}
+                    <p className="mt-3 text-xs text-slate-500">
+                      Friends since {formatDate(friend.friendsSince)}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </section>
+      </div>
     </div>
   );
 }

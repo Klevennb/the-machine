@@ -26,6 +26,13 @@ type ProfilePayload = {
   feedIncludesPublic?: unknown;
   feedIncludesFriends?: unknown;
   feedIncludesPrompts?: unknown;
+  dailyTargetWords?: unknown;
+  streakGoalDays?: unknown;
+  showProfileSection?: unknown;
+  showPreferencesSection?: unknown;
+  showFeedSection?: unknown;
+  showGoalsSection?: unknown;
+  showFriendsSection?: unknown;
 };
 
 function getSessionUserId(session: unknown) {
@@ -57,6 +64,20 @@ function cleanGenreList(value: unknown) {
 
 function cleanBoolean(value: unknown) {
   return typeof value === "boolean" ? value : undefined;
+}
+
+function cleanNumber(value: unknown, defaultValue: number, maxValue: number) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const numericValue = Number(value);
+
+  if (!Number.isFinite(numericValue)) {
+    return defaultValue;
+  }
+
+  return Math.min(maxValue, Math.max(1, Math.round(numericValue)));
 }
 
 export async function PATCH(request: Request) {
@@ -108,6 +129,13 @@ export async function PATCH(request: Request) {
         feedIncludesPublic: cleanBoolean(body.feedIncludesPublic),
         feedIncludesFriends: cleanBoolean(body.feedIncludesFriends),
         feedIncludesPrompts: cleanBoolean(body.feedIncludesPrompts),
+        dailyTargetWords: cleanNumber(body.dailyTargetWords, 500, 50000),
+        streakGoalDays: cleanNumber(body.streakGoalDays, 7, 365),
+        showProfileSection: cleanBoolean(body.showProfileSection),
+        showPreferencesSection: cleanBoolean(body.showPreferencesSection),
+        showFeedSection: cleanBoolean(body.showFeedSection),
+        showGoalsSection: cleanBoolean(body.showGoalsSection),
+        showFriendsSection: cleanBoolean(body.showFriendsSection),
       },
       select: {
         id: true,
@@ -124,6 +152,13 @@ export async function PATCH(request: Request) {
         feedIncludesPublic: true,
         feedIncludesFriends: true,
         feedIncludesPrompts: true,
+        dailyTargetWords: true,
+        streakGoalDays: true,
+        showProfileSection: true,
+        showPreferencesSection: true,
+        showFeedSection: true,
+        showGoalsSection: true,
+        showFriendsSection: true,
         updatedAt: true,
       },
     });

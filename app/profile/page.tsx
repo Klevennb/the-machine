@@ -36,8 +36,18 @@ export default async function ProfilePage() {
       feedIncludesPublic: true,
       feedIncludesFriends: true,
       feedIncludesPrompts: true,
+      dailyTargetWords: true,
+      streakGoalDays: true,
+      showProfileSection: true,
+      showPreferencesSection: true,
+      showFeedSection: true,
+      showGoalsSection: true,
+      showFriendsSection: true,
       updatedAt: true,
-      wordGoals: {
+      customGoals: {
+        where: {
+          isCompleted: false,
+        },
         orderBy: {
           updatedAt: "desc",
         },
@@ -45,10 +55,8 @@ export default async function ProfilePage() {
           id: true,
           title: true,
           description: true,
-          dailyTargetWords: true,
-          isActive: true,
-          currentStreakDays: true,
-          bestStreakDays: true,
+          isCompleted: true,
+          completedAt: true,
           createdAt: true,
           updatedAt: true,
         },
@@ -136,8 +144,9 @@ export default async function ProfilePage() {
             new Date(right.friendsSince).getTime() -
             new Date(left.friendsSince).getTime()
         )}
-        initialGoals={user.wordGoals.map((goal) => ({
+        initialGoals={user.customGoals.map((goal) => ({
           ...goal,
+          completedAt: goal.completedAt?.toISOString() ?? null,
           createdAt: goal.createdAt.toISOString(),
           updatedAt: goal.updatedAt.toISOString(),
         }))}
@@ -156,6 +165,13 @@ export default async function ProfilePage() {
           feedIncludesPublic: user.feedIncludesPublic,
           feedIncludesFriends: user.feedIncludesFriends,
           feedIncludesPrompts: user.feedIncludesPrompts,
+          dailyTargetWords: user.dailyTargetWords,
+          streakGoalDays: user.streakGoalDays,
+          showProfileSection: user.showProfileSection,
+          showPreferencesSection: user.showPreferencesSection,
+          showFeedSection: user.showFeedSection,
+          showGoalsSection: user.showGoalsSection,
+          showFriendsSection: user.showFriendsSection,
           updatedAt: user.updatedAt.toISOString(),
         }}
       />
