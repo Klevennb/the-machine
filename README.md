@@ -1,36 +1,113 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GetWrite - The Machine
 
-## Getting Started
+A full-stack social writing platform built with Next.js. Users can write, share their work, discover writing prompts, connect with other writers, and set writing goals.
 
-First, run the development server:
+## Features
+
+- **User Authentication**: Secure sign-up, login, and profile management
+- **Rich Text Editor**: Write entries with Lexical, a modern rich-text editing framework
+- **Social Network**: Connect with friends, send and receive friend requests
+- **Library**: Organize and browse your personal collection of writing entries
+- **Exploration**: Discover writing from the community
+- **Writing Prompts**: Get random writing prompts for inspiration
+- **User Search**: Find and connect with other writers
+- **User Profiles**: View profiles, manage preferences, and track writing goals
+- **Writing Goals**: Set personal writing targets and track streaks
+
+## Technical Stack
+
+### Frontend
+- **Next.js 16.2.3** - React framework with App Router
+- **React 19.2.4** - UI library
+- **TypeScript** - Type safety
+- **Tailwind CSS 4** - Utility-first CSS
+- **Lexical 0.44.0** - Rich text editor library
+
+### Backend
+- **Next.js API Routes** - RESTful API endpoints
+- **Prisma 7.7.0** - ORM for database management
+- **PostgreSQL** - Database
+- **NextAuth 4.24.13** - Authentication & authorization
+- **bcrypt 6.0.0** - Password hashing
+
+### Development Tools
+- **ESLint 9** - Code linting
+- **Node.js 18+** - Runtime
+
+## Prerequisites
+
+To run this project, you need:
+
+- **Node.js** 18.x or higher
+- **npm** or **yarn** (Node package manager)
+- **PostgreSQL** 12.x or higher
+- A running PostgreSQL database instance
+
+## Installation & Setup
+
+### 1. Clone and Install Dependencies
+
+```bash
+git clone <repository-url>
+cd the-machine
+npm install
+```
+
+### 2. Environment Variables
+
+Create a `.env.local` file in the project root with the following variables:
+
+```env
+# Database
+DATABASE_URL="postgresql://user:password@localhost:5432/getwrite"
+
+# NextAuth
+NEXTAUTH_SECRET="your-secret-key-here"
+NEXTAUTH_URL="http://localhost:3000"
+
+# Optional: Add your provider credentials (Google, GitHub, etc.) if using OAuth
+```
+
+### 3. Database Setup
+
+Run Prisma migrations to set up the database schema:
+
+```bash
+npm run db:migrate
+```
+
+(Optional) Seed the database with sample data:
+
+```bash
+npm run db:seed
+```
+
+### 4. Start Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Available Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `npm run dev` - Start development server with hot-reload
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint to check code quality
+- `npm run db:migrate` - Run pending Prisma migrations
+- `npm run db:seed` - Seed the database with initial data
 
-## Learn More
+## Project Structure
 
-To learn more about Next.js, take a look at the following resources:
+- `app/` - Next.js App Router pages and API routes
+- `app/components/` - React components
+- `lib/` - Utility functions and helpers
+- `prisma/` - Database schema and migrations
+- `public/` - Static assets
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Notes
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- This project uses the latest Next.js 16 with breaking changes. See `AGENTS.md` for important information.
+- Database migrations are automatically applied on build via the postinstall hook.
