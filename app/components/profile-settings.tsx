@@ -113,11 +113,11 @@ function Toggle({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3">
-      <span className="text-sm font-medium text-slate-700">{label}</span>
+    <label className="flex items-center justify-between gap-4 rounded-2xl border border-[var(--line)] bg-white/75 px-4 py-3">
+      <span className="text-sm font-bold text-[var(--charcoal)]">{label}</span>
       <input
         checked={checked}
-        className="h-5 w-5 accent-slate-950"
+        className="h-5 w-5 accent-[var(--sage)]"
         onChange={(event) => onChange(event.target.checked)}
         type="checkbox"
       />
@@ -138,7 +138,7 @@ function GenrePicker({
 
   return (
     <div>
-      <div className="mb-2 text-sm font-medium text-slate-700">{label}</div>
+      <div className="mb-2 text-sm font-bold text-[var(--charcoal)]">{label}</div>
       <div className="flex flex-wrap gap-2">
         {GENRES.map((genre) => {
           const isSelected = selectedSet.has(genre);
@@ -147,8 +147,8 @@ function GenrePicker({
             <button
               className={`rounded-full border px-3 py-2 text-sm font-medium ${
                 isSelected
-                  ? "border-slate-950 bg-slate-950 text-white"
-                  : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                  ? "border-[var(--sage)] bg-[var(--sage)] text-white"
+                  : "border-[var(--line)] bg-white text-[var(--sage-dark)] hover:border-[var(--line-strong)]"
               }`}
               key={genre}
               onClick={() => {
@@ -379,8 +379,8 @@ export function ProfileSettings({
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-        <h2 className="text-xl font-semibold text-slate-950">
+      <section className="rounded-2xl border border-[var(--line)] bg-white/70 p-5 shadow-[var(--shadow-soft)]">
+        <h2 className="font-literary text-2xl font-semibold text-[var(--charcoal)]">
           Visible Sections
         </h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -398,15 +398,15 @@ export function ProfileSettings({
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
         <section className="space-y-6">
           {profile.showProfileSection ? (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-              <h2 className="text-xl font-semibold text-slate-950">Profile</h2>
+            <div className="rounded-2xl border border-[var(--line)] bg-white/70 p-5 shadow-[var(--shadow-soft)]">
+              <h2 className="font-literary text-2xl font-semibold text-[var(--charcoal)]">Profile</h2>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                  <span className="mb-2 block text-sm font-bold text-[var(--charcoal)]">
                     Display name
                   </span>
                   <input
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                    className="app-field w-full px-4 py-3"
                     onChange={(event) =>
                       updateProfile("name", event.target.value)
                     }
@@ -414,11 +414,11 @@ export function ProfileSettings({
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                  <span className="mb-2 block text-sm font-bold text-[var(--charcoal)]">
                     Username
                   </span>
                   <input
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                    className="app-field w-full px-4 py-3"
                     onChange={(event) =>
                       updateProfile("username", event.target.value)
                     }
@@ -426,21 +426,21 @@ export function ProfileSettings({
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                  <span className="mb-2 block text-sm font-bold text-[var(--charcoal)]">
                     Email
                   </span>
                   <input
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-500"
+                    className="app-field w-full px-4 py-3 text-[var(--muted)]"
                     readOnly
                     value={profile.email ?? ""}
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                  <span className="mb-2 block text-sm font-bold text-[var(--charcoal)]">
                     Timezone
                   </span>
                   <input
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                    className="app-field w-full px-4 py-3"
                     onChange={(event) =>
                       updateProfile("timezone", event.target.value)
                     }
@@ -453,7 +453,7 @@ export function ProfileSettings({
                   Bio
                 </span>
                 <textarea
-                  className="min-h-32 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                  className="app-field min-h-32 w-full px-4 py-3"
                   onChange={(event) => updateProfile("bio", event.target.value)}
                   value={profile.bio ?? ""}
                 />
@@ -462,17 +462,17 @@ export function ProfileSettings({
           ) : null}
 
           {profile.showPreferencesSection ? (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-              <h2 className="text-xl font-semibold text-slate-950">
+            <div className="rounded-2xl border border-[var(--line)] bg-white/70 p-5 shadow-[var(--shadow-soft)]">
+              <h2 className="font-literary text-2xl font-semibold text-[var(--charcoal)]">
                 Preferences
               </h2>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                  <span className="mb-2 block text-sm font-bold text-[var(--charcoal)]">
                     Profile visibility
                   </span>
                   <select
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                    className="app-field w-full px-4 py-3"
                     onChange={(event) =>
                       updateProfile(
                         "profileVisibility",
@@ -520,8 +520,8 @@ export function ProfileSettings({
           ) : null}
 
           {profile.showFeedSection ? (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-              <h2 className="text-xl font-semibold text-slate-950">Feed</h2>
+            <div className="rounded-2xl border border-[var(--line)] bg-white/70 p-5 shadow-[var(--shadow-soft)]">
+              <h2 className="font-literary text-2xl font-semibold text-[var(--charcoal)]">Feed</h2>
               <div className="mt-4 grid gap-3 md:grid-cols-3">
                 <Toggle
                   checked={profile.feedIncludesPublic}
@@ -550,7 +550,7 @@ export function ProfileSettings({
 
           <div className="flex flex-wrap items-center gap-3">
             <button
-              className="rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+              className="app-button-primary px-5 py-2.5 text-sm disabled:cursor-not-allowed disabled:bg-[var(--muted)]"
               disabled={savingProfile}
               onClick={saveProfile}
               type="button"
@@ -558,24 +558,24 @@ export function ProfileSettings({
               {savingProfile ? "Saving..." : "Save Profile"}
             </button>
             {profileMessage ? (
-              <span className="text-sm text-slate-500">{profileMessage}</span>
+              <span className="text-sm font-semibold text-[var(--muted)]">{profileMessage}</span>
             ) : null}
           </div>
         </section>
 
         <section className="space-y-4">
           {profile.showGoalsSection ? (
-            <div className="rounded-2xl border border-slate-200 bg-white p-5">
-              <h2 className="text-xl font-semibold text-slate-950">Goals</h2>
+            <div className="rounded-2xl border border-[var(--line)] bg-white/75 p-5 shadow-[var(--shadow-soft)]">
+              <h2 className="font-literary text-2xl font-semibold text-[var(--charcoal)]">Goals</h2>
 
               <div className="mt-4 border-t border-slate-200 pt-4">
-                <h3 className="font-semibold text-slate-950">Daily Words</h3>
+                <h3 className="font-bold text-[var(--charcoal)]">Daily Words</h3>
                 <label className="mt-3 block">
                   <span className="mb-2 block text-sm font-medium text-slate-700">
                     Daily target words
                   </span>
                   <input
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                    className="app-field w-full px-4 py-3"
                     min={1}
                     onChange={(event) =>
                       updateProfile(
@@ -590,13 +590,13 @@ export function ProfileSettings({
               </div>
 
               <div className="mt-5 border-t border-slate-200 pt-4">
-                <h3 className="font-semibold text-slate-950">Streak Goals</h3>
+                <h3 className="font-bold text-[var(--charcoal)]">Streak Goals</h3>
                 <label className="mt-3 block">
                   <span className="mb-2 block text-sm font-medium text-slate-700">
                     Streak goal days
                   </span>
                   <input
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                    className="app-field w-full px-4 py-3"
                     min={1}
                     onChange={(event) =>
                       updateProfile("streakGoalDays", Number(event.target.value))
@@ -608,10 +608,10 @@ export function ProfileSettings({
               </div>
 
               <div className="mt-5 border-t border-slate-200 pt-4">
-                <h3 className="font-semibold text-slate-950">Custom Goal</h3>
+                <h3 className="font-bold text-[var(--charcoal)]">Custom Goal</h3>
                 <div className="mt-3 grid gap-3">
                   <input
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                    className="app-field w-full px-4 py-3"
                     onChange={(event) =>
                       setNewGoal((current) => ({
                         ...current,
@@ -622,7 +622,7 @@ export function ProfileSettings({
                     value={newGoal.title}
                   />
                   <textarea
-                    className="min-h-24 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                    className="app-field min-h-24 w-full px-4 py-3"
                     onChange={(event) =>
                       setNewGoal((current) => ({
                         ...current,
@@ -633,7 +633,7 @@ export function ProfileSettings({
                     value={newGoal.description}
                   />
                   <button
-                    className="w-full rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400 sm:w-auto"
+                    className="app-button-primary w-full px-5 py-2.5 text-sm disabled:cursor-not-allowed disabled:bg-[var(--muted)] sm:w-auto"
                     disabled={savingGoalId === "new"}
                     onClick={createGoal}
                     type="button"
@@ -642,7 +642,7 @@ export function ProfileSettings({
                   </button>
                 </div>
                 {goalMessage ? (
-                  <p className="mt-3 text-sm text-slate-500">{goalMessage}</p>
+                  <p className="mt-3 text-sm font-semibold text-[var(--muted)]">{goalMessage}</p>
                 ) : null}
               </div>
 

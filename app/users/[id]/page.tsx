@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
+import { StreakChip, SurfaceCard } from "@/app/components/app-ui";
 import { ProfileFriendButton } from "@/app/components/profile-friend-button";
 import { ProtectedPageShell } from "@/app/components/protected-page-shell";
 import { authOptions } from "@/lib/auth";
@@ -133,11 +134,37 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
       panelClassName="max-w-6xl"
       showHomeLink
     >
-      <div className="grid gap-6 lg:grid-cols-[minmax(260px,0.8fr)_minmax(0,1.2fr)]">
-        <aside className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-          <div className="space-y-3 text-sm text-slate-600">
+      <div className="space-y-8">
+        <SurfaceCard className="grid gap-6 p-8 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center">
+          <div className="grid size-28 place-items-center rounded-full bg-[var(--sage-soft)] font-literary text-4xl font-bold text-[var(--sage-dark)]">
+            {displayName.slice(0, 1).toUpperCase()}
+          </div>
+          <div>
+            <StreakChip tone="sage">
+              {user.username ? `@${user.username}` : "writer profile"}
+            </StreakChip>
+            <h2 className="mt-4 font-literary text-4xl font-bold text-[var(--charcoal)]">
+              {displayName}
+            </h2>
+            {canViewProfileDetails && user.bio ? (
+              <p className="mt-3 max-w-2xl whitespace-pre-wrap font-literary text-lg leading-8 text-[var(--charcoal)]/75">
+                {user.bio}
+              </p>
+            ) : null}
+          </div>
+          {!isOwnProfile ? (
+            <ProfileFriendButton
+              initialRelationship={visibleRelationship}
+              profileUserId={user.id}
+            />
+          ) : null}
+        </SurfaceCard>
+
+        <div className="grid gap-6 lg:grid-cols-[minmax(260px,0.8fr)_minmax(0,1.2fr)]">
+        <aside className="rounded-2xl border border-[var(--line)] bg-white/70 p-5 shadow-[var(--shadow-soft)]">
+          <div className="space-y-3 text-sm text-[var(--muted)]">
             <p>
-              <span className="font-medium text-slate-800">Username:</span>{" "}
+              <span className="font-bold text-[var(--charcoal)]">Username:</span>{" "}
               {user.username ? `@${user.username}` : "Not set"}
             </p>
             {canViewProfileDetails ? (
@@ -150,24 +177,24 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
             ) : null}
             {visibleEmail ? (
               <p>
-                <span className="font-medium text-slate-800">Email:</span>{" "}
+                <span className="font-bold text-[var(--charcoal)]">Email:</span>{" "}
                 {visibleEmail}
               </p>
             ) : null}
           </div>
 
           {!canViewProfileDetails ? (
-            <p className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-600">
+            <p className="mt-5 rounded-2xl bg-[var(--paper-soft)] p-4 text-sm leading-6 text-[var(--muted)]">
               This writer has not made profile details public.
             </p>
           ) : null}
 
           {canViewProfileDetails && user.bio ? (
             <div className="mt-5">
-              <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
+              <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--muted)]">
                 Bio
               </h2>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--charcoal)]/75">
                 {user.bio}
               </p>
             </div>
@@ -175,13 +202,13 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
 
           {canViewProfileDetails && user.favoriteGenres.length > 0 ? (
             <div className="mt-5">
-              <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
+              <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--muted)]">
                 Favorite Genres
               </h2>
               <div className="mt-3 flex flex-wrap gap-2">
                 {user.favoriteGenres.map((genre) => (
                   <span
-                    className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700"
+                    className="rounded-full bg-[var(--sage-soft)] px-3 py-1.5 text-sm font-semibold text-[var(--sage-dark)]"
                     key={genre}
                   >
                     {genre}
@@ -191,51 +218,44 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
             </div>
           ) : null}
 
-          {!isOwnProfile ? (
-            <div className="mt-5 border-t border-slate-200 pt-5">
-              <ProfileFriendButton
-                initialRelationship={visibleRelationship}
-                profileUserId={user.id}
-              />
-            </div>
-          ) : null}
         </aside>
 
         <section className="min-w-0">
-          <h2 className="text-xl font-semibold text-slate-950">
+          <h2 className="font-literary text-3xl font-semibold text-[var(--charcoal)]">
             Published Stories
           </h2>
           <div className="mt-4 space-y-4">
             {user.entries.length === 0 ? (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
+              <div className="rounded-2xl bg-[var(--paper-soft)] p-5 text-sm text-[var(--muted)]">
                 No stories are visible to you right now.
               </div>
             ) : null}
 
             {user.entries.map((entry) => (
               <article
-                className="rounded-2xl border border-slate-200 bg-white p-5"
+                className="rounded-2xl border border-[var(--line)] bg-white/75 p-5 shadow-[var(--shadow-soft)]"
                 key={entry.id}
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h3 className="break-words text-lg font-semibold text-slate-950">
+                    <h3 className="break-words font-literary text-2xl font-semibold text-[var(--charcoal)]">
                       {entry.title?.trim() || "Untitled Entry"}
                     </h3>
-                    <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-500">
+                    <div className="mt-2 flex flex-wrap gap-3 text-xs font-semibold text-[var(--muted)]">
                       <span>{entry.wordCount} words</span>
                       <span>Published {formatDate(entry.publishedAt)}</span>
                       <span>{entry.visibility.toLowerCase()}</span>
                     </div>
                   </div>
                 </div>
-                <p className="mt-3 text-sm leading-6 text-slate-600">
+                <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
                   {getPreview(entry)}
                 </p>
               </article>
             ))}
           </div>
         </section>
+        </div>
       </div>
     </ProtectedPageShell>
   );

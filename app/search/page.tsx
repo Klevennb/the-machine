@@ -43,8 +43,8 @@ export default async function SearchPage() {
 
   return (
     <ProtectedPageShell
-      title="Search"
-      description="Find other writers, send friend requests with a short note, and respond to requests waiting for you."
+      title="Social Discovery"
+      description="Find kindred writers, send friend requests with a short note, and respond to requests waiting for you."
       panelClassName="max-w-7xl"
       showHomeLink
     >

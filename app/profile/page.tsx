@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
+import { StreakChip, SurfaceCard } from "@/app/components/app-ui";
 import { ProfileSettings } from "@/app/components/profile-settings";
 import { ProtectedPageShell } from "@/app/components/protected-page-shell";
 import { authOptions } from "@/lib/auth";
@@ -17,11 +18,12 @@ export default async function ProfilePage() {
     redirect("/login");
   }
 
-  const user = await prisma.user.findUnique({
-    where: {
-      id: userId,
-    },
-    select: {
+  const [user, entryStats] = await Promise.all([
+    prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+      select: {
       id: true,
       name: true,
       username: true,
@@ -103,8 +105,20 @@ export default async function ProfilePage() {
           },
         },
       },
-    },
-  });
+      },
+    }),
+    prisma.entry.aggregate({
+      where: {
+        authorId: userId,
+      },
+      _sum: {
+        wordCount: true,
+      },
+      _count: {
+        id: true,
+      },
+    }),
+  ]);
 
   if (!user) {
     redirect("/login");
@@ -113,12 +127,47 @@ export default async function ProfilePage() {
   return (
     <ProtectedPageShell
       title="Profile"
-      description="Manage your profile, writing goals, feed curation, and reading preferences."
+      description="Manage your public presence, goals, feed curation, and writing preferences."
       panelClassName="max-w-7xl"
       showHomeLink
     >
-      <ProfileSettings
-        initialFriends={[
+      <div className="space-y-8">
+        <SurfaceCard className="grid gap-6 p-8 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center">
+          <div className="grid size-28 place-items-center rounded-full bg-[var(--sage-soft)] font-literary text-4xl font-bold text-[var(--sage-dark)]">
+            {getDisplayName(user).slice(0, 1).toUpperCase()}
+          </div>
+          <div>
+            <StreakChip tone="sage">{user.profileVisibility.toLowerCase()} profile</StreakChip>
+            <h2 className="mt-4 font-literary text-4xl font-bold text-[var(--charcoal)]">
+              {getDisplayName(user)}
+            </h2>
+            <p className="mt-3 max-w-2xl text-base leading-7 text-[var(--charcoal)]/75">
+              {user.bio?.trim() ||
+                "Shape how other writers see you and keep your creative routines visible."}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-6 text-center">
+            <div>
+              <p className="font-literary text-4xl font-bold text-[var(--sage-dark)]">
+                {(entryStats._sum.wordCount ?? 0).toLocaleString()}
+              </p>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--muted)]">
+                words
+              </p>
+            </div>
+            <div>
+              <p className="font-literary text-4xl font-bold text-[var(--sunset)]">
+                {entryStats._count.id.toLocaleString()}
+              </p>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--muted)]">
+                works
+              </p>
+            </div>
+          </div>
+        </SurfaceCard>
+
+        <ProfileSettings
+          initialFriends={[
           ...user.sentFriendRequests.map((friendship) => ({
             id: friendship.addressee.id,
             friendshipId: friendship.id,
@@ -144,13 +193,13 @@ export default async function ProfilePage() {
             new Date(right.friendsSince).getTime() -
             new Date(left.friendsSince).getTime()
         )}
-        initialGoals={user.customGoals.map((goal) => ({
+          initialGoals={user.customGoals.map((goal) => ({
           ...goal,
           completedAt: goal.completedAt?.toISOString() ?? null,
           createdAt: goal.createdAt.toISOString(),
           updatedAt: goal.updatedAt.toISOString(),
         }))}
-        initialUser={{
+          initialUser={{
           id: user.id,
           name: user.name,
           username: user.username,
@@ -173,8 +222,9 @@ export default async function ProfilePage() {
           showGoalsSection: user.showGoalsSection,
           showFriendsSection: user.showFriendsSection,
           updatedAt: user.updatedAt.toISOString(),
-        }}
-      />
+          }}
+        />
+      </div>
     </ProtectedPageShell>
   );
 }
