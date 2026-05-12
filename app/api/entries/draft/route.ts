@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getSessionUserId } from "@/lib/session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,16 +11,12 @@ type SaveDraftPayload = {
   entryId?: string;
   title?: string;
   plainText?: string;
-  content?: unknown;
+  content?: Prisma.InputJsonValue | null;
   wordCount?: number;
   privateAuthorNote?: string;
   publicAuthorNote?: string;
   promptId?: string | null;
 };
-
-function getSessionUserId(session: unknown) {
-  return (session as { user?: { id?: string } } | null)?.user?.id ?? null;
-}
 
 function getSummary(plainText: string) {
   const normalized = plainText.trim().replace(/\s+/g, " ");
@@ -102,7 +99,7 @@ export async function POST(request: Request) {
   const content =
     body.content === undefined || body.content === null
       ? Prisma.DbNull
-      : (body.content as Prisma.InputJsonValue);
+      : body.content;
 
   const draftData = {
     title: getFallbackTitle(title, plainText),

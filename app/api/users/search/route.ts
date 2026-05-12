@@ -1,13 +1,10 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getSessionUserId } from "@/lib/session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-function getSessionUserId(session: unknown) {
-  return (session as { user?: { id?: string } } | null)?.user?.id ?? null;
-}
 
 function getDisplayName(user: { name: string | null; username: string | null }) {
   return user.name?.trim() || user.username?.trim() || "Unnamed writer";
