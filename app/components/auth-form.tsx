@@ -77,22 +77,22 @@ export function AuthForm({ mode }: AuthFormProps) {
   }
 
   return (
-    <div className="w-full max-w-md rounded-[2rem] border border-white/45 bg-white/75 p-7 shadow-[0_30px_90px_-40px_rgba(15,23,42,0.55)] backdrop-blur-xl sm:p-9">
+    <div className="w-full max-w-md rounded-2xl border border-[var(--line)] bg-white/78 p-7 shadow-[var(--shadow-soft)] backdrop-blur-xl sm:p-9">
       <div className="mb-8 flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-amber-700">
+          <p className="text-xs font-bold uppercase tracking-[0.32em] text-[var(--sage-dark)]">
             WriteNow
           </p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">
+          <h1 className="mt-3 font-literary text-3xl font-bold text-[var(--charcoal)]">
             {isLogin ? "Welcome back." : "Create your account."}
           </h1>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
+          <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
             {isLogin
               ? "Sign in to continue into your workspace."
               : "Register once and you will be signed in immediately."}
           </p>
         </div>
-        <div className="rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-xs font-medium text-slate-500">
+        <div className="rounded-full bg-[var(--paper-muted)] px-3 py-1 text-xs font-bold text-[var(--sage-dark)]">
           {isLogin ? "Login" : "Register"}
         </div>
       </div>
@@ -100,11 +100,11 @@ export function AuthForm({ mode }: AuthFormProps) {
       <form className="space-y-4" onSubmit={handleSubmit}>
         {!isLogin ? (
           <label className="block">
-            <span className="mb-2 block text-sm font-medium text-slate-700">
+            <span className="mb-2 block text-sm font-bold text-[var(--charcoal)]">
               Name
             </span>
             <input
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+              className="app-field w-full px-4 py-3"
               name="name"
               type="text"
               placeholder="Alex Morgan"
@@ -113,11 +113,11 @@ export function AuthForm({ mode }: AuthFormProps) {
         ) : null}
 
         <label className="block">
-          <span className="mb-2 block text-sm font-medium text-slate-700">
+          <span className="mb-2 block text-sm font-bold text-[var(--charcoal)]">
             Email
           </span>
           <input
-            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+            className="app-field w-full px-4 py-3"
             name="email"
             type="email"
             placeholder="you@example.com"
@@ -126,11 +126,11 @@ export function AuthForm({ mode }: AuthFormProps) {
         </label>
 
         <label className="block">
-          <span className="mb-2 block text-sm font-medium text-slate-700">
+          <span className="mb-2 block text-sm font-bold text-[var(--charcoal)]">
             Password
           </span>
           <input
-            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+            className="app-field w-full px-4 py-3"
             name="password"
             type="password"
             placeholder="••••••••"
@@ -140,13 +140,13 @@ export function AuthForm({ mode }: AuthFormProps) {
         </label>
 
         {error ? (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
           </div>
         ) : null}
 
         <button
-          className="w-full rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+          className="app-button-primary w-full px-4 py-3 text-sm disabled:cursor-not-allowed disabled:bg-[var(--muted)]"
           disabled={isPending}
           type="submit"
         >
@@ -160,10 +160,10 @@ export function AuthForm({ mode }: AuthFormProps) {
         </button>
       </form>
 
-      <div className="mt-6 text-sm text-slate-600">
+      <div className="mt-6 text-sm text-[var(--muted)]">
         {isLogin ? "Need an account?" : "Already have an account?"}{" "}
         <Link
-          className="font-semibold text-slate-950 underline decoration-amber-400 underline-offset-4"
+          className="font-bold text-[var(--sage-dark)] underline decoration-[var(--sage)] underline-offset-4"
           href={isLogin ? "/register" : "/login"}
         >
           {isLogin ? "Register here" : "Sign in instead"}

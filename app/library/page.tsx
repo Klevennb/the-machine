@@ -38,8 +38,8 @@ export default async function LibraryPage() {
 
   return (
     <ProtectedPageShell
-      title="Library"
-      description="Browse everything you have written, search across entries, read the selected piece, and manage whether it is public or private."
+      title="Personal Library"
+      description="Return to previous thoughts and continue where your mind left off."
       panelClassName="max-w-7xl"
       showHomeLink
     >

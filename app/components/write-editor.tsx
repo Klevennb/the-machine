@@ -157,7 +157,7 @@ type WritingPrompt = {
 
 function Placeholder() {
   return (
-    <div className="pointer-events-none absolute left-5 top-5 text-slate-400">
+    <div className="pointer-events-none absolute left-6 top-6 font-literary text-3xl font-bold text-[var(--paper-deep)]">
       Start drafting here...
     </div>
   );
@@ -227,11 +227,11 @@ function ToolbarButton({
 }) {
   return (
     <button
-      className={`rounded-xl border px-3 py-2 text-sm font-medium transition ${
+      className={`rounded-full border px-3 py-2 text-sm font-bold transition ${
         active
-          ? "border-slate-900 bg-slate-900 text-white"
-          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
-      } disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400`}
+          ? "border-[var(--sage)] bg-[var(--sage)] text-white"
+          : "border-[var(--line)] bg-white/70 text-[var(--sage-dark)] hover:border-[var(--line-strong)] hover:bg-white"
+      } disabled:cursor-not-allowed disabled:border-[var(--line)] disabled:bg-[var(--paper-muted)] disabled:text-[var(--muted)]`}
       disabled={disabled}
       onClick={onClick}
       type="button"
@@ -398,7 +398,7 @@ function ToolbarPlugin() {
   };
 
   return (
-    <div className="mb-4 space-y-3 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
+    <div className="mb-4 space-y-3 rounded-2xl border border-[var(--line)] bg-[var(--paper-soft)] p-4">
       <div className="flex flex-wrap gap-2">
         <ToolbarButton
           disabled={!toolbarState.canUndo}
@@ -440,7 +440,7 @@ function ToolbarPlugin() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+        <label className="flex items-center gap-2 rounded-full border border-[var(--line)] bg-white/75 px-3 py-2 text-sm font-semibold text-[var(--sage-dark)]">
           <span>Font size</span>
           <select
             className="bg-transparent outline-none"
@@ -455,7 +455,7 @@ function ToolbarPlugin() {
           </select>
         </label>
 
-        <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+        <label className="flex items-center gap-2 rounded-full border border-[var(--line)] bg-white/75 px-3 py-2 text-sm font-semibold text-[var(--sage-dark)]">
           <span>Block</span>
           <select
             className="bg-transparent outline-none"
@@ -495,7 +495,7 @@ function StatusBarPlugin() {
   return (
     <>
       <OnChangePlugin onChange={handleChange} />
-      <div className="mt-4 flex gap-4 text-sm text-slate-500">
+      <div className="mt-4 flex gap-4 text-sm font-semibold text-[var(--muted)]">
         <span>{stats.words} words</span>
         <span>{stats.characters} characters</span>
       </div>
@@ -655,16 +655,17 @@ export function WriteEditor({ initialDraft, showPromptPicker }: WriteEditorProps
         editorState: initialEditorState,
       }}
     >
-      <div className="rounded-[1.75rem] border border-slate-200 bg-white">
+      <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="min-w-0">
         {showPromptPicker ? (
-          <div className="mb-4 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
+          <div className="mb-4 rounded-2xl border border-[var(--line)] bg-white/70 p-5 shadow-[var(--shadow-soft)]">
             <div className="flex flex-wrap items-end justify-between gap-4">
               <label className="block min-w-52">
-                <span className="mb-2 block text-sm font-medium text-slate-700">
+                <span className="mb-2 block text-sm font-bold text-[var(--charcoal)]">
                   Prompt genre
                 </span>
                 <select
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                  className="app-field w-full px-4 py-3"
                   onChange={(event) => {
                     setPromptGenre(event.target.value);
                     setSeenPromptIds([]);
@@ -681,7 +682,7 @@ export function WriteEditor({ initialDraft, showPromptPicker }: WriteEditorProps
               </label>
 
               <button
-                className="rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+                className="app-button-primary px-5 py-2.5 text-sm disabled:cursor-not-allowed disabled:bg-[var(--muted)]"
                 disabled={isLoadingPrompt}
                 onClick={() => requestPrompt()}
                 type="button"
@@ -695,20 +696,20 @@ export function WriteEditor({ initialDraft, showPromptPicker }: WriteEditorProps
             </div>
 
             {selectedPrompt ? (
-              <article className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+              <article className="mt-4 rounded-2xl border border-[var(--line)] bg-[var(--paper-soft)] p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h2 className="break-words text-lg font-semibold text-slate-950">
+                    <h2 className="break-words font-literary text-xl font-semibold text-[var(--charcoal)]">
                       {selectedPrompt.title}
                     </h2>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="mt-1 text-sm font-semibold text-[var(--muted)]">
                       {selectedPrompt.genre}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {selectedPrompt.tags.map((tag) => (
                       <span
-                        className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600"
+                        className="rounded-full bg-[var(--sage-soft)] px-3 py-1 text-xs font-bold text-[var(--sage-dark)]"
                         key={tag}
                       >
                         {tag}
@@ -716,25 +717,25 @@ export function WriteEditor({ initialDraft, showPromptPicker }: WriteEditorProps
                     ))}
                   </div>
                 </div>
-                <p className="mt-3 text-sm leading-6 text-slate-700">
+                <p className="mt-3 font-literary text-base italic leading-7 text-[var(--charcoal)]/75">
                   {selectedPrompt.body}
                 </p>
               </article>
             ) : null}
 
             {promptMessage ? (
-              <p className="mt-3 text-sm text-slate-500">{promptMessage}</p>
+              <p className="mt-3 text-sm font-semibold text-[var(--muted)]">{promptMessage}</p>
             ) : null}
           </div>
         ) : null}
 
-        <div className="mb-4 grid gap-4 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
+        <div className="mb-4 grid gap-4 rounded-2xl border border-[var(--line)] bg-white/70 p-5 shadow-[var(--shadow-soft)]">
           <label className="block">
-            <span className="mb-2 block text-sm font-medium text-slate-700">
+            <span className="mb-2 block text-sm font-bold text-[var(--charcoal)]">
               Title
             </span>
             <input
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+              className="app-field w-full px-4 py-3 font-literary text-2xl font-bold"
               onChange={(event) => setTitle(event.target.value)}
               placeholder="Untitled draft"
               type="text"
@@ -744,11 +745,11 @@ export function WriteEditor({ initialDraft, showPromptPicker }: WriteEditorProps
 
           <div className="grid gap-4 lg:grid-cols-2">
             <label className="block">
-              <span className="mb-2 block text-sm font-medium text-slate-700">
+              <span className="mb-2 block text-sm font-bold text-[var(--charcoal)]">
                 Private note
               </span>
               <textarea
-                className="min-h-28 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                className="app-field min-h-28 w-full px-4 py-3"
                 onChange={(event) => setPrivateAuthorNote(event.target.value)}
                 placeholder="Notes only you can see..."
                 value={privateAuthorNote}
@@ -756,11 +757,11 @@ export function WriteEditor({ initialDraft, showPromptPicker }: WriteEditorProps
             </label>
 
             <label className="block">
-              <span className="mb-2 block text-sm font-medium text-slate-700">
+              <span className="mb-2 block text-sm font-bold text-[var(--charcoal)]">
                 Public note
               </span>
               <textarea
-                className="min-h-28 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                className="app-field min-h-28 w-full px-4 py-3"
                 onChange={(event) => setPublicAuthorNote(event.target.value)}
                 placeholder="Optional public context for this entry..."
                 value={publicAuthorNote}
@@ -769,12 +770,12 @@ export function WriteEditor({ initialDraft, showPromptPicker }: WriteEditorProps
           </div>
         </div>
         <ToolbarPlugin />
-        <div className="relative overflow-hidden rounded-[1.25rem] border border-slate-200 bg-white">
+        <div className="relative overflow-hidden rounded-2xl bg-white shadow-[var(--shadow-soft)]">
           <RichTextPlugin
             contentEditable={
               <ContentEditable
                 aria-placeholder="Start drafting here..."
-                className="min-h-[360px] px-5 py-5 text-base leading-8 text-slate-800 outline-none"
+                className="min-h-[520px] px-6 py-6 font-literary text-lg leading-9 text-[var(--charcoal)] outline-none md:px-10 md:py-10"
                 placeholder={<Placeholder />}
               />
             }
@@ -796,9 +797,9 @@ export function WriteEditor({ initialDraft, showPromptPicker }: WriteEditorProps
           />
         </div>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="text-sm text-slate-500">{saveMessage}</div>
+          <div className="text-sm font-semibold text-[var(--muted)]">{saveMessage}</div>
           <button
-            className="rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+            className="app-button-primary px-5 py-2.5 text-sm disabled:cursor-not-allowed disabled:bg-[var(--muted)]"
             disabled={isSaving}
             onClick={saveDraft}
             type="button"
@@ -807,6 +808,48 @@ export function WriteEditor({ initialDraft, showPromptPicker }: WriteEditorProps
           </button>
         </div>
         <StatusBarPlugin />
+        </div>
+
+        <aside className="space-y-4">
+          <div className="rounded-2xl border border-[var(--line)] bg-white/70 p-6 shadow-[var(--shadow-soft)]">
+            <h2 className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--sage-dark)]">
+              Active Prompt
+            </h2>
+            {selectedPrompt ? (
+              <>
+                <p className="mt-5 font-literary text-xl italic leading-8 text-[var(--charcoal)]">
+                  {selectedPrompt.body}
+                </p>
+                <p className="mt-4 text-sm font-semibold text-[var(--muted)]">
+                  {selectedPrompt.genre}
+                </p>
+              </>
+            ) : (
+              <p className="mt-5 text-sm leading-6 text-[var(--muted)]">
+                Choose a genre and request a prompt, or write from a blank page.
+              </p>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-[var(--line)] bg-[var(--paper-soft)] p-6">
+            <span className="inline-flex rounded-full bg-[var(--sunset-soft)] px-3 py-1 text-xs font-bold text-[var(--sunset)]">
+              Draft stats
+            </span>
+            <p className="mt-5 font-literary text-4xl font-bold text-[var(--sage-dark)]">
+              {wordCount.toLocaleString()}
+            </p>
+            <p className="text-sm font-semibold text-[var(--muted)]">words captured</p>
+            <div className="mt-5 h-2 overflow-hidden rounded-full bg-white">
+              <div
+                className="h-full rounded-full bg-[var(--sage)]"
+                style={{ width: `${Math.min(100, Math.round((wordCount / 1000) * 100))}%` }}
+              />
+            </div>
+            <p className="mt-3 text-xs font-semibold text-[var(--muted)]">
+              First milestone: 1,000 words
+            </p>
+          </div>
+        </aside>
       </div>
     </LexicalComposer>
   );

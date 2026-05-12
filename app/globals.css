@@ -1,22 +1,41 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
-  --app-panel-surface: #f8fafc;
-  --app-panel-border: #e2e8f0;
-  --app-panel-radius: 1rem;
+  --background: #fcf9f8;
+  --foreground: #1b1c1c;
+  --paper: #fcf9f8;
+  --paper-soft: #f6f3f2;
+  --paper-muted: #f0eded;
+  --paper-deep: #e4e2e1;
+  --sage: #45645e;
+  --sage-dark: #2d4c46;
+  --sage-soft: #c7eae1;
+  --sunset: #9c4141;
+  --sunset-soft: #ffdad8;
+  --charcoal: #1b1c1c;
+  --muted: #6d7471;
+  --line: #e4e2e1;
+  --line-strong: #c1c8c5;
+  --shadow-soft: 0 24px 70px -42px rgba(45, 45, 45, 0.38);
+  --app-panel-surface: #f6f3f2;
+  --app-panel-border: #e4e2e1;
+  --app-panel-radius: 1.25rem;
   --app-panel-padding: 1rem;
-  --app-control-text: #1e293b;
-  --app-muted-text: #64748b;
-  --app-focus-ring: rgba(245, 158, 11, 0.32);
+  --app-control-text: #1b1c1c;
+  --app-muted-text: #6d7471;
+  --app-focus-ring: rgba(69, 100, 94, 0.28);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-paper: var(--paper);
+  --color-paper-soft: var(--paper-soft);
+  --color-paper-muted: var(--paper-muted);
+  --color-sage: var(--sage);
+  --color-sunset: var(--sunset);
+  --font-sans: var(--font-ui);
+  --font-literary: var(--font-literary);
 }
 
 html {
@@ -31,7 +50,9 @@ body {
 
 a,
 button,
-input {
+input,
+textarea,
+select {
   transition:
     color 160ms ease,
     background-color 160ms ease,
@@ -41,7 +62,56 @@ input {
 }
 
 ::selection {
-  background: rgba(245, 158, 11, 0.24);
+  background: rgba(69, 100, 94, 0.2);
+}
+
+:focus-visible {
+  outline: 2px solid var(--sage);
+  outline-offset: 4px;
+}
+
+.font-literary {
+  font-family: var(--font-literary), Georgia, serif;
+}
+
+.app-card {
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: var(--shadow-soft);
+}
+
+.app-field {
+  border: 0;
+  border-bottom: 2px solid var(--line-strong);
+  border-radius: 0.75rem 0.75rem 0.25rem 0.25rem;
+  background: var(--paper-soft);
+  color: var(--charcoal);
+  outline: none;
+}
+
+.app-field:focus {
+  border-bottom-color: var(--sage);
+  box-shadow: 0 10px 30px -24px rgba(45, 45, 45, 0.45);
+}
+
+.app-button-primary {
+  border-radius: 999px;
+  background: var(--sage);
+  color: white;
+  font-weight: 700;
+}
+
+.app-button-primary:hover {
+  background: var(--sage-dark);
+}
+
+.app-button-secondary {
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.54);
+  color: var(--sage-dark);
+  font-weight: 700;
 }
 
 .app-disclosure {

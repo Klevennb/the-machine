@@ -53,8 +53,8 @@ export default async function WritePage({ searchParams }: WritePageProps) {
   return (
     <ProtectedPageShell
       title="Write"
-      description="The writing workspace now includes a Lexical editor with the common rich text controls you would expect in a modern drafting surface."
-      panelClassName="max-w-5xl"
+      description="A focused writing surface with prompts, notes, word count, and draft saving close at hand."
+      panelClassName="max-w-7xl"
       showHomeLink
     >
       <WriteEditor

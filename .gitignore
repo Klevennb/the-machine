@@ -42,5 +42,5 @@ next-env.d.ts
 
 #misc
 /notes
-
+/design
 /generated/prisma

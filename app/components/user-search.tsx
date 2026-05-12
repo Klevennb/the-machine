@@ -193,11 +193,11 @@ export function UserSearch({ initialRequests }: UserSearchProps) {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)]">
-      <section className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 p-5">
-        <h2 className="text-xl font-semibold text-slate-950">Find Writers</h2>
+      <section className="min-w-0 rounded-2xl border border-[var(--line)] bg-white/70 p-6 shadow-[var(--shadow-soft)]">
+        <h2 className="font-literary text-3xl font-semibold text-[var(--charcoal)]">Find Writers</h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
           <input
-            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+            className="app-field w-full px-4 py-3"
             onChange={(event) => {
               setQuery(event.target.value);
               setSearchMessage("");
@@ -212,7 +212,7 @@ export function UserSearch({ initialRequests }: UserSearchProps) {
             value={query}
           />
           <button
-            className="rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+            className="app-button-primary px-5 py-2.5 text-sm disabled:cursor-not-allowed disabled:bg-[var(--muted)]"
             disabled={loadingSearch}
             onClick={searchUsers}
             type="button"
@@ -221,39 +221,39 @@ export function UserSearch({ initialRequests }: UserSearchProps) {
           </button>
         </div>
         {searchMessage ? (
-          <p className="mt-3 text-sm text-slate-500">{searchMessage}</p>
+          <p className="mt-3 text-sm font-semibold text-[var(--muted)]">{searchMessage}</p>
         ) : null}
 
         <div className="mt-5 space-y-4">
           {users.map((user) => (
             <article
-              className="rounded-2xl border border-slate-200 bg-white p-5"
+              className="rounded-2xl border border-[var(--line)] bg-white/80 p-5"
               key={user.id}
             >
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <h3 className="break-words text-lg font-semibold text-slate-950">
+                  <h3 className="break-words font-literary text-2xl font-semibold text-[var(--charcoal)]">
                     {user.displayName}
                   </h3>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-sm font-semibold text-[var(--muted)]">
                     {usernameLabel(user.username)}
                   </p>
                 </div>
                 <Link
-                  className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  className="app-button-secondary px-4 py-2 text-sm"
                   href={`/users/${user.id}`}
                 >
                   View Profile
                 </Link>
               </div>
               {user.bio ? (
-                <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">
+                <p className="mt-3 line-clamp-2 text-sm leading-6 text-[var(--muted)]">
                   {user.bio}
                 </p>
               ) : null}
 
               {user.relationship ? (
-                <p className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                <p className="mt-4 rounded-2xl bg-[var(--paper-soft)] px-4 py-3 text-sm font-semibold text-[var(--muted)]">
                   {user.relationship.status === "ACCEPTED"
                     ? "You are friends."
                     : user.relationship.direction === "outgoing"
@@ -263,7 +263,7 @@ export function UserSearch({ initialRequests }: UserSearchProps) {
               ) : (
                 <div className="mt-4 grid gap-3">
                   <textarea
-                    className="min-h-24 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                    className="app-field min-h-24 w-full px-4 py-3"
                     maxLength={500}
                     onChange={(event) =>
                       setMessages((current) => ({
@@ -275,11 +275,11 @@ export function UserSearch({ initialRequests }: UserSearchProps) {
                     value={messages[user.id] ?? ""}
                   />
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <span className="text-xs text-slate-500">
+                    <span className="text-xs font-semibold text-[var(--muted)]">
                       {(messages[user.id] ?? "").length}/500
                     </span>
                     <button
-                      className="rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+                      className="app-button-primary px-5 py-2.5 text-sm disabled:cursor-not-allowed disabled:bg-[var(--muted)]"
                       disabled={busyId === user.id}
                       onClick={() => sendFriendRequest(user.id)}
                       type="button"
@@ -294,47 +294,47 @@ export function UserSearch({ initialRequests }: UserSearchProps) {
         </div>
       </section>
 
-      <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5">
-        <h2 className="text-xl font-semibold text-slate-950">
+      <section className="min-w-0 rounded-2xl border border-[var(--line)] bg-white/75 p-6 shadow-[var(--shadow-soft)]">
+        <h2 className="font-literary text-3xl font-semibold text-[var(--charcoal)]">
           Friend Requests
         </h2>
         {requestMessage ? (
-          <p className="mt-3 text-sm text-slate-500">{requestMessage}</p>
+          <p className="mt-3 text-sm font-semibold text-[var(--muted)]">{requestMessage}</p>
         ) : null}
 
         <div className="mt-4 space-y-4">
           {requests.length === 0 ? (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+            <div className="rounded-2xl bg-[var(--paper-soft)] p-4 text-sm text-[var(--muted)]">
               No pending friend requests.
             </div>
           ) : null}
 
           {requests.map((friendRequest) => (
             <article
-              className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+              className="rounded-2xl border border-[var(--line)] bg-[var(--paper-soft)] p-4"
               key={friendRequest.id}
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <h3 className="break-words font-semibold text-slate-950">
+                  <h3 className="break-words font-bold text-[var(--charcoal)]">
                     {friendRequest.requester.displayName}
                   </h3>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-sm text-[var(--muted)]">
                     {usernameLabel(friendRequest.requester.username)}
                   </p>
                 </div>
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-[var(--muted)]">
                   {formatDate(friendRequest.createdAt)}
                 </span>
               </div>
               {friendRequest.message ? (
-                <p className="mt-3 whitespace-pre-wrap rounded-2xl border border-slate-200 bg-white p-3 text-sm leading-6 text-slate-700">
+                <p className="mt-3 whitespace-pre-wrap rounded-2xl bg-white/80 p-3 text-sm leading-6 text-[var(--charcoal)]/80">
                   {friendRequest.message}
                 </p>
               ) : null}
               <div className="mt-4 flex flex-wrap gap-2">
                 <button
-                  className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+                  className="app-button-primary px-4 py-2 text-sm disabled:cursor-not-allowed disabled:bg-[var(--muted)]"
                   disabled={busyId === friendRequest.id}
                   onClick={() => updateFriendRequest(friendRequest.id, "accept")}
                   type="button"
@@ -342,7 +342,7 @@ export function UserSearch({ initialRequests }: UserSearchProps) {
                   Accept
                 </button>
                 <button
-                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="app-button-secondary px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
                   disabled={busyId === friendRequest.id}
                   onClick={() => updateFriendRequest(friendRequest.id, "deny")}
                   type="button"
@@ -350,7 +350,7 @@ export function UserSearch({ initialRequests }: UserSearchProps) {
                   Deny
                 </button>
                 <button
-                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="app-button-secondary px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
                   disabled={busyId === friendRequest.id}
                   onClick={() => updateFriendRequest(friendRequest.id, "ignore")}
                   type="button"
