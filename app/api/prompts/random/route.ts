@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getSessionUserId } from "@/lib/session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,10 +20,6 @@ const GENRES = [
   "Comedy",
   "Nonfiction",
 ] as const;
-
-function getSessionUserId(session: unknown) {
-  return (session as { user?: { id?: string } } | null)?.user?.id ?? null;
-}
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);

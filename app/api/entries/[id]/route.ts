@@ -1,21 +1,18 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getSessionUserId } from "@/lib/session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type EntryVisibilityPayload = {
-  visibility?: unknown;
+  visibility?: "PRIVATE" | "PUBLIC";
 };
 
 type EntryRouteContext = {
   params: Promise<{ id: string }>;
 };
-
-function getSessionUserId(session: unknown) {
-  return (session as { user?: { id?: string } } | null)?.user?.id ?? null;
-}
 
 export async function PATCH(request: Request, context: EntryRouteContext) {
   const session = await getServerSession(authOptions);

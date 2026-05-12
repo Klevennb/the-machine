@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Prisma } from "@prisma/client";
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
@@ -119,7 +120,7 @@ const GENRES = [
 
 type DraftContent = {
   root: {
-    children: unknown[];
+    children: Prisma.JsonValue[];
     direction: null | "ltr" | "rtl";
     format: string;
     indent: number;
@@ -128,11 +129,13 @@ type DraftContent = {
   };
 };
 
+type JsonRecord = Record<string, Prisma.JsonValue>;
+
 type DraftEntry = {
   id: string;
   title: string;
   plainText: string;
-  content: unknown;
+  content: Prisma.JsonValue | null;
   wordCount: number;
   privateAuthorNote: string;
   publicAuthorNote: string;
@@ -184,18 +187,27 @@ function createEmptyEditorState(): DraftContent {
   };
 }
 
-function normalizeInitialContent(content: unknown): DraftContent {
+function normalizeInitialContent(
+  content: Prisma.JsonValue | null | undefined
+): DraftContent {
   if (
     !content ||
     typeof content !== "object" ||
-    !("root" in (content as Record<string, unknown>))
+    Array.isArray(content) ||
+    !("root" in content)
   ) {
     return createEmptyEditorState();
   }
 
-  const root = (content as { root?: { children?: unknown[] } }).root;
+  const root = (content as JsonRecord).root;
 
-  if (!root || !Array.isArray(root.children) || root.children.length === 0) {
+  if (
+    !root ||
+    typeof root !== "object" ||
+    Array.isArray(root) ||
+    !Array.isArray(root.children) ||
+    root.children.length === 0
+  ) {
     return createEmptyEditorState();
   }
 

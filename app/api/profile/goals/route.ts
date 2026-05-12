@@ -1,28 +1,25 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getSessionUserId } from "@/lib/session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type GoalPayload = {
-  title?: unknown;
-  description?: unknown;
+  title?: string;
+  description?: string;
 };
 
-function getSessionUserId(session: unknown) {
-  return (session as { user?: { id?: string } } | null)?.user?.id ?? null;
-}
-
-function cleanString(value: unknown, maxLength: number) {
-  if (typeof value !== "string") {
+function cleanString(value: string | undefined, maxLength: number) {
+  if (value === undefined) {
     return "";
   }
 
   return value.trim().slice(0, maxLength);
 }
 
-function cleanOptionalString(value: unknown, maxLength: number) {
+function cleanOptionalString(value: string | undefined, maxLength: number) {
   const normalized = cleanString(value, maxLength);
   return normalized || null;
 }
