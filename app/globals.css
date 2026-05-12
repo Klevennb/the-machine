@@ -3,6 +3,13 @@
 :root {
   --background: #f8fafc;
   --foreground: #0f172a;
+  --app-panel-surface: #f8fafc;
+  --app-panel-border: #e2e8f0;
+  --app-panel-radius: 1rem;
+  --app-panel-padding: 1rem;
+  --app-control-text: #1e293b;
+  --app-muted-text: #64748b;
+  --app-focus-ring: rgba(245, 158, 11, 0.32);
 }
 
 @theme inline {
@@ -35,4 +42,94 @@ input {
 
 ::selection {
   background: rgba(245, 158, 11, 0.24);
+}
+
+.app-disclosure {
+  border: 1px solid var(--app-panel-border);
+  border-radius: var(--app-panel-radius);
+  background: var(--app-panel-surface);
+  padding: var(--app-panel-padding);
+  caret-color: transparent;
+}
+
+.app-disclosure__summary {
+  display: flex;
+  cursor: pointer;
+  list-style: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  color: var(--app-control-text);
+  user-select: none;
+  caret-color: transparent;
+}
+
+.app-disclosure__summary::-webkit-details-marker {
+  display: none;
+}
+
+.app-disclosure__summary:focus {
+  outline: none;
+}
+
+.app-disclosure__summary:focus-visible {
+  outline: 3px solid var(--app-focus-ring);
+  outline-offset: 0.35rem;
+  border-radius: calc(var(--app-panel-radius) - 0.25rem);
+}
+
+.app-disclosure * {
+  caret-color: transparent;
+}
+
+.app-disclosure__label {
+  min-width: 0;
+}
+
+.app-disclosure__eyebrow {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--app-muted-text);
+}
+
+.app-disclosure__title {
+  display: block;
+  margin-top: 0.125rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.app-disclosure__chevron {
+  position: relative;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  border: 1px solid var(--app-panel-border);
+  border-radius: 999px;
+  background: #ffffff;
+}
+
+.app-disclosure__chevron::before {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.55rem;
+  height: 0.55rem;
+  content: "";
+  border-right: 2px solid var(--app-muted-text);
+  border-bottom: 2px solid var(--app-muted-text);
+  transform: translate(-50%, -65%) rotate(45deg);
+  transition: transform 160ms ease;
+}
+
+.app-disclosure[open] .app-disclosure__chevron::before {
+  transform: translate(-50%, -35%) rotate(225deg);
+}
+
+.app-disclosure__content {
+  margin-top: 1.25rem;
 }
