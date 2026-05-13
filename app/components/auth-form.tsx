@@ -15,6 +15,9 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [isPending, setIsPending] = useState(false);
 
   const isLogin = mode === "login";
+  const formTitleId = `${mode}-form-title`;
+  const formDescriptionId = `${mode}-form-description`;
+  const formErrorId = `${mode}-form-error`;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -77,27 +80,45 @@ export function AuthForm({ mode }: AuthFormProps) {
   }
 
   return (
-    <div className="w-full max-w-md rounded-2xl border border-[var(--line)] bg-white/78 p-7 shadow-[var(--shadow-soft)] backdrop-blur-xl sm:p-9">
+    <div
+      aria-labelledby={formTitleId}
+      className="w-full max-w-md rounded-2xl border border-white/80 bg-white/90 p-7 shadow-[var(--shadow-soft)] backdrop-blur-xl sm:p-9"
+      role="region"
+    >
       <div className="mb-8 flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.32em] text-[var(--sage-dark)]">
-            WriteNow
+            WriteAway
           </p>
-          <h1 className="mt-3 font-literary text-3xl font-bold text-[var(--charcoal)]">
+          <h2
+            className="mt-3 font-literary text-3xl font-bold text-[var(--charcoal)]"
+            id={formTitleId}
+          >
             {isLogin ? "Welcome back." : "Create your account."}
-          </h1>
-          <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+          </h2>
+          <p
+            className="mt-3 text-sm font-medium leading-6 text-[var(--charcoal)]/85"
+            id={formDescriptionId}
+          >
             {isLogin
-              ? "Sign in to continue into your workspace."
-              : "Register once and you will be signed in immediately."}
+              ? "Sign in to continue your private writing routine."
+              : "Start with a private workspace for drafts, prompts, and goals."}
           </p>
         </div>
-        <div className="rounded-full bg-[var(--paper-muted)] px-3 py-1 text-xs font-bold text-[var(--sage-dark)]">
+        <div
+          aria-hidden="true"
+          className="rounded-full bg-[var(--paper-muted)] px-3 py-1 text-xs font-bold text-[var(--sage-dark)]"
+        >
           {isLogin ? "Login" : "Register"}
         </div>
       </div>
 
-      <form className="space-y-4" onSubmit={handleSubmit}>
+      <form
+        aria-describedby={`${formDescriptionId}${error ? ` ${formErrorId}` : ""}`}
+        aria-label={isLogin ? "Sign in to WriteAway" : "Create a WriteAway account"}
+        className="space-y-4"
+        onSubmit={handleSubmit}
+      >
         {!isLogin ? (
           <label className="block">
             <span className="mb-2 block text-sm font-bold text-[var(--charcoal)]">
@@ -108,6 +129,7 @@ export function AuthForm({ mode }: AuthFormProps) {
               name="name"
               type="text"
               placeholder="Alex Morgan"
+              autoComplete="name"
             />
           </label>
         ) : null}
@@ -121,6 +143,7 @@ export function AuthForm({ mode }: AuthFormProps) {
             name="email"
             type="email"
             placeholder="you@example.com"
+            autoComplete="email"
             required
           />
         </label>
@@ -133,6 +156,7 @@ export function AuthForm({ mode }: AuthFormProps) {
             className="app-field w-full px-4 py-3"
             name="password"
             type="password"
+            autoComplete={isLogin ? "current-password" : "new-password"}
             placeholder="••••••••"
             minLength={8}
             required
@@ -140,7 +164,11 @@ export function AuthForm({ mode }: AuthFormProps) {
         </label>
 
         {error ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div
+            className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800"
+            id={formErrorId}
+            role="alert"
+          >
             {error}
           </div>
         ) : null}
@@ -160,7 +188,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         </button>
       </form>
 
-      <div className="mt-6 text-sm text-[var(--muted)]">
+      <div className="mt-6 text-sm font-medium text-[var(--charcoal)]/80">
         {isLogin ? "Need an account?" : "Already have an account?"}{" "}
         <Link
           className="font-bold text-[var(--sage-dark)] underline decoration-[var(--sage)] underline-offset-4"
