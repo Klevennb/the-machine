@@ -40,6 +40,15 @@ function formatRecentDate(date: Date) {
   }).format(date);
 }
 
+function formatActivityDate(date: Date) {
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}
+
 function getWorkTitle(work: RecentWork) {
   return work.title?.trim() || "Untitled draft";
 }
@@ -58,6 +67,27 @@ function getDisplayHandle(user: {
 
 function getDateKey(date: Date) {
   return date.toISOString().slice(0, 10);
+}
+
+function normalizeUtcDate(date: Date) {
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
+  );
+}
+
+function addUtcDays(date: Date, days: number) {
+  const nextDate = new Date(date);
+
+  nextDate.setUTCDate(nextDate.getUTCDate() + days);
+  return nextDate;
+}
+
+function getSixMonthWindowStart(today: Date) {
+  const startDate = new Date(today);
+
+  startDate.setUTCMonth(startDate.getUTCMonth() - 6);
+  startDate.setUTCDate(startDate.getUTCDate() + 1);
+  return normalizeUtcDate(startDate);
 }
 
 function getActivityTone(day: ActivityDay | undefined) {
@@ -84,55 +114,105 @@ function getActivityTone(day: ActivityDay | undefined) {
 
 function ActivityGrid({
   activityDays,
+  profileCreatedAt,
   today,
 }: {
   activityDays: ActivityDay[];
+  profileCreatedAt: Date;
   today: string;
 }) {
   const activityByDate = new Map(
     activityDays.map((day) => [getDateKey(day.date), day])
   );
-  const todayDate = new Date(`${today}T00:00:00.000Z`);
-  const days = Array.from({ length: 35 }, (_, index) => {
-    const date = new Date(todayDate);
-    date.setUTCDate(todayDate.getUTCDate() - (34 - index));
-    return date;
-  });
+  const todayDate = normalizeUtcDate(new Date(`${today}T00:00:00.000Z`));
+  const profileCreatedDate = normalizeUtcDate(profileCreatedAt);
+  const sixMonthStart = getSixMonthWindowStart(todayDate);
+  const displayStart =
+    profileCreatedDate > sixMonthStart ? profileCreatedDate : sixMonthStart;
+  const profileCreatedInRange =
+    profileCreatedDate >= displayStart && profileCreatedDate <= todayDate;
+  const leadingBlankDays = displayStart.getUTCDay();
+  const activeDays: Date[] = [];
+
+  for (
+    let cursor = displayStart;
+    cursor <= todayDate;
+    cursor = addUtcDays(cursor, 1)
+  ) {
+    activeDays.push(cursor);
+  }
+
+  const cells: Array<Date | null> = [
+    ...Array.from({ length: leadingBlankDays }, () => null),
+    ...activeDays,
+  ];
+  const rangeLabel = `${formatActivityDate(displayStart)} - ${formatActivityDate(
+    todayDate
+  )}`;
 
   return (
-    <SurfaceCard className="p-6">
+    <SurfaceCard className="p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="font-literary text-2xl font-semibold text-[var(--charcoal)]">
+          <h2 className="font-literary text-xl font-semibold text-[var(--charcoal)]">
             Recent writing days
           </h2>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Private saved words, tracked against your daily target.
+            {rangeLabel}
           </p>
+          {!profileCreatedInRange ? (
+            <p className="mt-1 text-xs font-semibold text-[var(--sage-dark)]">
+              Profile created {formatActivityDate(profileCreatedDate)}
+            </p>
+          ) : null}
         </div>
         <div className="flex items-center gap-2 text-xs font-semibold text-[var(--muted)]">
           <span>Less</span>
-          <span className="size-3 rounded-sm bg-[var(--paper-muted)]" />
-          <span className="size-3 rounded-sm bg-[var(--sage-soft)]" />
-          <span className="size-3 rounded-sm bg-[var(--sage)]" />
-          <span className="size-3 rounded-sm bg-[var(--sage-dark)]" />
+          <span className="size-2.5 rounded-sm bg-[var(--paper-muted)]" />
+          <span className="size-2.5 rounded-sm bg-[var(--sage-soft)]" />
+          <span className="size-2.5 rounded-sm bg-[var(--sage)]" />
+          <span className="size-2.5 rounded-sm bg-[var(--sage-dark)]" />
           <span>More</span>
         </div>
       </div>
-      <div className="mt-5 grid grid-cols-7 gap-2">
-        {days.map((date) => {
-          const key = getDateKey(date);
-          const day = activityByDate.get(key);
+      <div className="mt-5 overflow-x-auto pb-1">
+        <div className="grid auto-cols-max grid-flow-col grid-rows-7 gap-1">
+          {cells.map((date, index) => {
+            if (!date) {
+              return (
+                <div
+                  aria-hidden="true"
+                  className="size-2.5"
+                  key={`blank-${index}`}
+                />
+              );
+            }
 
-          return (
-            <div
-              aria-label={`${key}: ${day?.wordsWritten ?? 0} words`}
-              className={`aspect-square rounded-md ${getActivityTone(day)}`}
-              key={key}
-              title={`${key}: ${(day?.wordsWritten ?? 0).toLocaleString()} words`}
-            />
-          );
-        })}
+            const key = getDateKey(date);
+            const day = activityByDate.get(key);
+            const isProfileCreatedDay = key === getDateKey(profileCreatedDate);
+            const titleParts = [
+              `${key}: ${(day?.wordsWritten ?? 0).toLocaleString()} words`,
+            ];
+
+            if (isProfileCreatedDay) {
+              titleParts.push("profile created");
+            }
+
+            return (
+              <div
+                aria-label={titleParts.join(", ")}
+                className={`size-2.5 rounded-[3px] ${getActivityTone(day)} ${
+                  isProfileCreatedDay
+                    ? "ring-2 ring-[var(--sunset)] ring-offset-1 ring-offset-white"
+                    : ""
+                }`}
+                key={key}
+                title={titleParts.join(", ")}
+              />
+            );
+          })}
+        </div>
       </div>
     </SurfaceCard>
   );
@@ -326,6 +406,7 @@ export default async function Home() {
         name: true,
         username: true,
         email: true,
+        createdAt: true,
       },
     }),
     prisma.entry.findMany({
@@ -366,11 +447,20 @@ export default async function Home() {
     prisma.dailyProgress.findMany({
       where: {
         userId,
+        date: {
+          gte: (() => {
+            const date = new Date();
+
+            date.setUTCHours(0, 0, 0, 0);
+            date.setUTCMonth(date.getUTCMonth() - 6);
+            date.setUTCDate(date.getUTCDate() + 1);
+            return date;
+          })(),
+        },
       },
       orderBy: {
         date: "desc",
       },
-      take: 35,
       select: {
         date: true,
         wordsWritten: true,
@@ -451,7 +541,11 @@ export default async function Home() {
             ))}
           </div>
 
-          <ActivityGrid activityDays={activityDays} today={todayProgress.date} />
+          <ActivityGrid
+            activityDays={activityDays}
+            profileCreatedAt={currentUser.createdAt}
+            today={todayProgress.date}
+          />
         </div>
 
         <HomeSidebar recentWorks={recentWorks} writingStreaks={writingStreaks} />

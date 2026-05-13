@@ -2,12 +2,30 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  CircleUserRound,
+  Compass,
+  House,
+  Library,
+  PenLine,
+  Search,
+  type LucideIcon,
+} from "lucide-react";
 
 export type NavItem = {
   href: string;
   label: string;
-  icon: string;
+  icon: "home" | "library" | "explore" | "write" | "search" | "profile";
   match: "exact" | "prefix";
+};
+
+const navIcons: Record<NavItem["icon"], LucideIcon> = {
+  home: House,
+  library: Library,
+  explore: Compass,
+  write: PenLine,
+  search: Search,
+  profile: CircleUserRound,
 };
 
 function isActive(pathname: string, item: NavItem) {
@@ -25,6 +43,7 @@ export function SidebarNav({ items }: { items: NavItem[] }) {
     <nav className="mt-10 space-y-2" aria-label="Primary navigation">
       {items.map((item) => {
         const active = isActive(pathname, item);
+        const Icon = navIcons[item.icon];
 
         return (
           <Link
@@ -37,8 +56,11 @@ export function SidebarNav({ items }: { items: NavItem[] }) {
             href={item.href}
             key={item.href}
           >
-            <span aria-hidden="true" className="w-5 text-center text-base">
-              {item.icon}
+            <span
+              aria-hidden="true"
+              className="inline-flex size-5 shrink-0 items-center justify-center"
+            >
+              <Icon className="size-5" strokeWidth={2} />
             </span>
             {item.label}
           </Link>
@@ -58,6 +80,7 @@ export function MobileNav({ items }: { items: NavItem[] }) {
     >
       {items.map((item) => {
         const active = isActive(pathname, item);
+        const Icon = navIcons[item.icon];
 
         return (
           <Link
@@ -70,8 +93,11 @@ export function MobileNav({ items }: { items: NavItem[] }) {
             href={item.href}
             key={item.href}
           >
-            <span aria-hidden="true" className="text-base leading-none">
-              {item.icon}
+            <span
+              aria-hidden="true"
+              className="inline-flex size-5 shrink-0 items-center justify-center"
+            >
+              <Icon className="size-5" strokeWidth={2} />
             </span>
             <span>{item.label}</span>
           </Link>

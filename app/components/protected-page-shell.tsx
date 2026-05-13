@@ -34,12 +34,12 @@ export function ProtectedPageShell({
 }
 
 const navItems: NavItem[] = [
-  { href: "/", label: "Hub", icon: "H", match: "exact" },
-  { href: "/library", label: "Library", icon: "L", match: "prefix" },
-  { href: "/explore", label: "Explore", icon: "E", match: "prefix" },
-  { href: "/write", label: "Write", icon: "W", match: "prefix" },
-  { href: "/search", label: "Search", icon: "S", match: "prefix" },
-  { href: "/profile", label: "Profile", icon: "P", match: "prefix" },
+  { href: "/", label: "Hub", icon: "home", match: "exact" },
+  { href: "/library", label: "Library", icon: "library", match: "prefix" },
+  { href: "/explore", label: "Explore", icon: "explore", match: "prefix" },
+  { href: "/write", label: "Write", icon: "write", match: "prefix" },
+  { href: "/search", label: "Search", icon: "search", match: "prefix" },
+  { href: "/profile", label: "Profile", icon: "profile", match: "prefix" },
 ];
 
 function getDisplayName(user: {
