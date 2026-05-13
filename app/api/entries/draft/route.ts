@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserId } from "@/lib/session";
+import { creditEntryWritingProgress } from "@/lib/writing-progress";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -121,6 +122,7 @@ export async function POST(request: Request) {
       },
       select: {
         id: true,
+        wordCount: true,
       },
     });
 
@@ -128,31 +130,51 @@ export async function POST(request: Request) {
       return Response.json({ error: "Draft not found" }, { status: 404 });
     }
 
-    const draft = await prisma.entry.update({
-      where: {
-        id: existingDraft.id,
+    const result = await prisma.$transaction(async (tx) => {
+      const draft = await tx.entry.update({
+        where: {
+          id: existingDraft.id,
+        },
+        data: draftData,
+        select: {
+          id: true,
+          updatedAt: true,
+        },
+      });
+      const progress = await creditEntryWritingProgress({
+        db: tx,
+        entryId: draft.id,
+        userId,
+        wordDelta: wordCount - existingDraft.wordCount,
+      });
+
+      return { draft, progress };
+    });
+
+    return Response.json(result);
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+    const draft = await tx.entry.create({
+      data: {
+        authorId: userId,
+        ...draftData,
+        status: "DRAFT" as const,
       },
-      data: draftData,
       select: {
         id: true,
         updatedAt: true,
       },
     });
+    const progress = await creditEntryWritingProgress({
+      db: tx,
+      entryId: draft.id,
+      userId,
+      wordDelta: wordCount,
+    });
 
-    return Response.json({ draft });
-  }
-
-  const draft = await prisma.entry.create({
-    data: {
-      authorId: userId,
-      ...draftData,
-      status: "DRAFT" as const,
-    },
-    select: {
-      id: true,
-      updatedAt: true,
-    },
+    return { draft, progress };
   });
 
-  return Response.json({ draft }, { status: 201 });
+  return Response.json(result, { status: 201 });
 }

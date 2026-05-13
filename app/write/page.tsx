@@ -4,6 +4,7 @@ import { ProtectedPageShell } from "@/app/components/protected-page-shell";
 import { WriteEditor } from "@/app/components/write-editor";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getTodayWritingProgress } from "@/lib/writing-progress";
 
 type WritePageProps = {
   searchParams: Promise<{ entryId?: string | string[] }>;
@@ -22,33 +23,36 @@ export default async function WritePage({ searchParams }: WritePageProps) {
     ? params.entryId[0]
     : params.entryId;
 
-  const draft = requestedEntryId
-    ? await prisma.entry.findFirst({
-        where: {
-          id: requestedEntryId,
-          authorId: userId,
-        },
-        select: {
-          id: true,
-          title: true,
-          plainText: true,
-          content: true,
-          wordCount: true,
-          privateAuthorNote: true,
-          publicAuthorNote: true,
-          promptId: true,
-          prompt: {
-            select: {
-              id: true,
-              title: true,
-              body: true,
-              genre: true,
-              tags: true,
+  const [draft, todayProgress] = await Promise.all([
+    requestedEntryId
+      ? prisma.entry.findFirst({
+          where: {
+            id: requestedEntryId,
+            authorId: userId,
+          },
+          select: {
+            id: true,
+            title: true,
+            plainText: true,
+            content: true,
+            wordCount: true,
+            privateAuthorNote: true,
+            publicAuthorNote: true,
+            promptId: true,
+            prompt: {
+              select: {
+                id: true,
+                title: true,
+                body: true,
+                genre: true,
+                tags: true,
+              },
             },
           },
-        },
-      })
-    : null;
+        })
+      : null,
+    getTodayWritingProgress(prisma, userId),
+  ]);
 
   return (
     <ProtectedPageShell
@@ -72,6 +76,7 @@ export default async function WritePage({ searchParams }: WritePageProps) {
               }
             : null
         }
+        initialProgress={todayProgress}
         showPromptPicker={!draft}
       />
     </ProtectedPageShell>

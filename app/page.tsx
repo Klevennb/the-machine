@@ -6,6 +6,7 @@ import { PrimaryButton, ProgressRing, StreakChip, SurfaceCard } from "@/app/comp
 import { ProtectedPageShell } from "@/app/components/protected-page-shell";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getTodayWritingProgress } from "@/lib/writing-progress";
 
 type RecentWork = {
   id: string;
@@ -22,6 +23,13 @@ type WritingStreak = {
   streakGoalDays: number;
   currentStreakDays: number;
   bestStreakDays: number;
+};
+
+type ActivityDay = {
+  date: Date;
+  wordsWritten: number;
+  targetWords: number;
+  goalMet: boolean;
 };
 
 function formatRecentDate(date: Date) {
@@ -45,6 +53,88 @@ function getDisplayHandle(user: {
   }
 
   return user.name?.trim() || user.email?.trim() || "Your account";
+}
+
+function getDateKey(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function getActivityTone(day: ActivityDay | undefined) {
+  if (!day || day.wordsWritten <= 0) {
+    return "bg-[var(--paper-muted)]";
+  }
+
+  const ratio = day.wordsWritten / Math.max(day.targetWords, 1);
+
+  if (ratio >= 1) {
+    return "bg-[var(--sage-dark)]";
+  }
+
+  if (ratio >= 0.66) {
+    return "bg-[var(--sage)]";
+  }
+
+  if (ratio >= 0.33) {
+    return "bg-[var(--sage-soft)]";
+  }
+
+  return "bg-[var(--sunset-soft)]";
+}
+
+function ActivityGrid({
+  activityDays,
+  today,
+}: {
+  activityDays: ActivityDay[];
+  today: string;
+}) {
+  const activityByDate = new Map(
+    activityDays.map((day) => [getDateKey(day.date), day])
+  );
+  const todayDate = new Date(`${today}T00:00:00.000Z`);
+  const days = Array.from({ length: 35 }, (_, index) => {
+    const date = new Date(todayDate);
+    date.setUTCDate(todayDate.getUTCDate() - (34 - index));
+    return date;
+  });
+
+  return (
+    <SurfaceCard className="p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="font-literary text-2xl font-semibold text-[var(--charcoal)]">
+            Recent writing days
+          </h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Private saved words, tracked against your daily target.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 text-xs font-semibold text-[var(--muted)]">
+          <span>Less</span>
+          <span className="size-3 rounded-sm bg-[var(--paper-muted)]" />
+          <span className="size-3 rounded-sm bg-[var(--sage-soft)]" />
+          <span className="size-3 rounded-sm bg-[var(--sage)]" />
+          <span className="size-3 rounded-sm bg-[var(--sage-dark)]" />
+          <span>More</span>
+        </div>
+      </div>
+      <div className="mt-5 grid grid-cols-7 gap-2">
+        {days.map((date) => {
+          const key = getDateKey(date);
+          const day = activityByDate.get(key);
+
+          return (
+            <div
+              aria-label={`${key}: ${day?.wordsWritten ?? 0} words`}
+              className={`aspect-square rounded-md ${getActivityTone(day)}`}
+              key={key}
+              title={`${key}: ${(day?.wordsWritten ?? 0).toLocaleString()} words`}
+            />
+          );
+        })}
+      </div>
+    </SurfaceCard>
+  );
 }
 
 function HomeSidebarContent({
@@ -196,7 +286,8 @@ export default async function Home() {
     redirect("/login");
   }
 
-  const [currentUser, recentWorks, writingStreaks] = await Promise.all([
+  const [currentUser, recentWorks, writingStreaks, todayProgress, activityDays] =
+    await Promise.all([
     prisma.user.findUnique({
       where: {
         id: userId,
@@ -241,6 +332,22 @@ export default async function Home() {
         bestStreakDays: true,
       },
     }),
+    getTodayWritingProgress(prisma, userId),
+    prisma.dailyProgress.findMany({
+      where: {
+        userId,
+      },
+      orderBy: {
+        date: "desc",
+      },
+      take: 35,
+      select: {
+        date: true,
+        wordsWritten: true,
+        targetWords: true,
+        goalMet: true,
+      },
+    }),
   ]);
 
   if (!currentUser) {
@@ -253,12 +360,9 @@ export default async function Home() {
     { href: "/explore", label: "Prompts", caption: "Find a starting point." },
     { href: "/search", label: "Social Discovery", caption: "Find writers and requests." },
   ];
-  const primaryGoal = writingStreaks[0];
-  const progressPercent = primaryGoal
-    ? Math.round(
-        (primaryGoal.currentStreakDays / Math.max(primaryGoal.streakGoalDays, 1)) * 100
-      )
-    : 0;
+  const progressPercent = Math.round(
+    (todayProgress.wordsWritten / Math.max(todayProgress.targetWords, 1)) * 100
+  );
 
   return (
     <ProtectedPageShell
@@ -275,22 +379,20 @@ export default async function Home() {
           />
           <SurfaceCard className="grid items-center gap-8 p-8 md:grid-cols-[auto_minmax(0,1fr)]">
             <ProgressRing
-              caption={primaryGoal ? `of ${primaryGoal.streakGoalDays} days` : "goal"}
-              label={primaryGoal ? `${primaryGoal.currentStreakDays}` : "0"}
+              caption={`of ${todayProgress.targetWords.toLocaleString()} words`}
+              label={todayProgress.wordsWritten.toLocaleString()}
               value={progressPercent}
             />
             <div>
               <StreakChip>
-                {primaryGoal
-                  ? `${primaryGoal.currentStreakDays} day streak`
-                  : "Ready to begin"}
+                {todayProgress.currentStreakDays} day streak
               </StreakChip>
               <h2 className="mt-5 font-literary text-4xl font-bold leading-tight text-[var(--charcoal)]">
                 Steady progress, {getDisplayHandle(currentUser).replace(/^@/, "")}.
               </h2>
               <p className="mt-4 max-w-xl text-base leading-7 text-[var(--charcoal)]/75">
-                Every word is a step toward clarity. Your drafts, goals, and
-                writing prompts are ready when you are.
+                Every saved draft builds your private daily writing momentum.
+                Your best streak is {todayProgress.bestStreakDays} days.
               </p>
               <PrimaryButton className="mt-6" href="/write">
                 Continue Writing
@@ -314,6 +416,8 @@ export default async function Home() {
               </Link>
             ))}
           </div>
+
+          <ActivityGrid activityDays={activityDays} today={todayProgress.date} />
         </div>
 
         <HomeSidebar recentWorks={recentWorks} writingStreaks={writingStreaks} />

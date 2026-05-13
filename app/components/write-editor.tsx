@@ -144,6 +144,7 @@ type DraftEntry = {
 
 type WriteEditorProps = {
   initialDraft: DraftEntry | null;
+  initialProgress: WritingProgress;
   showPromptPicker: boolean;
 };
 
@@ -153,6 +154,16 @@ type WritingPrompt = {
   body: string;
   genre: string;
   tags: string[];
+};
+
+type WritingProgress = {
+  date: string;
+  wordsWritten: number;
+  targetWords: number;
+  goalMet: boolean;
+  creditedDelta: number;
+  currentStreakDays: number;
+  bestStreakDays: number;
 };
 
 function Placeholder() {
@@ -529,7 +540,11 @@ function CaptureDraftPlugin({ onChange }: CapturePluginProps) {
   return <OnChangePlugin onChange={handleChange} />;
 }
 
-export function WriteEditor({ initialDraft, showPromptPicker }: WriteEditorProps) {
+export function WriteEditor({
+  initialDraft,
+  initialProgress,
+  showPromptPicker,
+}: WriteEditorProps) {
   const [entryId, setEntryId] = useState(initialDraft?.id ?? null);
   const [title, setTitle] = useState(initialDraft?.title ?? "");
   const [privateAuthorNote, setPrivateAuthorNote] = useState(
@@ -556,7 +571,15 @@ export function WriteEditor({ initialDraft, showPromptPicker }: WriteEditorProps
   const [saveMessage, setSaveMessage] = useState(
     initialDraft ? "Loaded saved entry." : "Entry not saved yet."
   );
+  const [dailyProgress, setDailyProgress] = useState(initialProgress);
   const initialEditorState = useMemo(() => JSON.stringify(content), [content]);
+  const progressPercent = Math.min(
+    100,
+    Math.round(
+      (dailyProgress.wordsWritten / Math.max(dailyProgress.targetWords, 1)) *
+        100
+    )
+  );
 
   const requestPrompt = async (resetSeenPrompts = false) => {
     setIsLoadingPrompt(true);
@@ -630,6 +653,7 @@ export function WriteEditor({ initialDraft, showPromptPicker }: WriteEditorProps
       const data = (await response.json()) as {
         error?: string;
         draft?: { id: string; updatedAt: string };
+        progress?: WritingProgress;
       };
 
       if (!response.ok || !data.draft) {
@@ -638,6 +662,9 @@ export function WriteEditor({ initialDraft, showPromptPicker }: WriteEditorProps
       }
 
       setEntryId(data.draft.id);
+      if (data.progress) {
+        setDailyProgress(data.progress);
+      }
       setSaveMessage(
         `Saved ${new Date(data.draft.updatedAt).toLocaleString()}`
       );
@@ -833,21 +860,42 @@ export function WriteEditor({ initialDraft, showPromptPicker }: WriteEditorProps
 
           <div className="rounded-2xl border border-[var(--line)] bg-[var(--paper-soft)] p-6">
             <span className="inline-flex rounded-full bg-[var(--sunset-soft)] px-3 py-1 text-xs font-bold text-[var(--sunset)]">
-              Draft stats
+              Today&apos;s words
             </span>
             <p className="mt-5 font-literary text-4xl font-bold text-[var(--sage-dark)]">
-              {wordCount.toLocaleString()}
+              {dailyProgress.wordsWritten.toLocaleString()}
             </p>
-            <p className="text-sm font-semibold text-[var(--muted)]">words captured</p>
+            <p className="text-sm font-semibold text-[var(--muted)]">
+              of {dailyProgress.targetWords.toLocaleString()} private words
+            </p>
             <div className="mt-5 h-2 overflow-hidden rounded-full bg-white">
               <div
                 className="h-full rounded-full bg-[var(--sage)]"
-                style={{ width: `${Math.min(100, Math.round((wordCount / 1000) * 100))}%` }}
+                style={{ width: `${progressPercent}%` }}
               />
             </div>
             <p className="mt-3 text-xs font-semibold text-[var(--muted)]">
-              First milestone: 1,000 words
+              {dailyProgress.goalMet
+                ? "Daily target reached."
+                : `${Math.max(
+                    0,
+                    dailyProgress.targetWords - dailyProgress.wordsWritten
+                  ).toLocaleString()} words to today's target.`}
             </p>
+            <div className="mt-5 grid grid-cols-2 gap-3 text-sm font-semibold text-[var(--muted)]">
+              <div className="rounded-2xl bg-white/75 p-3">
+                <p className="font-literary text-2xl font-bold text-[var(--charcoal)]">
+                  {dailyProgress.currentStreakDays}
+                </p>
+                <p>current streak</p>
+              </div>
+              <div className="rounded-2xl bg-white/75 p-3">
+                <p className="font-literary text-2xl font-bold text-[var(--charcoal)]">
+                  {dailyProgress.bestStreakDays}
+                </p>
+                <p>best streak</p>
+              </div>
+            </div>
           </div>
         </aside>
       </div>
