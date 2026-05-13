@@ -82,12 +82,11 @@ function addUtcDays(date: Date, days: number) {
   return nextDate;
 }
 
-function getSixMonthWindowStart(today: Date) {
-  const startDate = new Date(today);
-
-  startDate.setUTCMonth(startDate.getUTCMonth() - 6);
-  startDate.setUTCDate(startDate.getUTCDate() + 1);
-  return normalizeUtcDate(startDate);
+function getActivityMonthLabel(date: Date) {
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    timeZone: "UTC",
+  }).format(date);
 }
 
 function getActivityTone(day: ActivityDay | undefined) {
@@ -126,11 +125,8 @@ function ActivityGrid({
   );
   const todayDate = normalizeUtcDate(new Date(`${today}T00:00:00.000Z`));
   const profileCreatedDate = normalizeUtcDate(profileCreatedAt);
-  const sixMonthStart = getSixMonthWindowStart(todayDate);
   const displayStart =
-    profileCreatedDate > sixMonthStart ? profileCreatedDate : sixMonthStart;
-  const profileCreatedInRange =
-    profileCreatedDate >= displayStart && profileCreatedDate <= todayDate;
+    profileCreatedDate <= todayDate ? profileCreatedDate : todayDate;
   const leadingBlankDays = displayStart.getUTCDay();
   const activeDays: Date[] = [];
 
@@ -142,10 +138,25 @@ function ActivityGrid({
     activeDays.push(cursor);
   }
 
-  const cells: Array<Date | null> = [
+  const rawWeekCount = Math.ceil((leadingBlankDays + activeDays.length) / 7);
+  const balancedWeekCount = Math.max(4, Math.ceil(rawWeekCount / 4) * 4);
+  const leadingBlankColumns = balancedWeekCount - rawWeekCount;
+  const baseCells: Array<Date | null> = [
+    ...Array.from({ length: leadingBlankColumns * 7 }, () => null),
     ...Array.from({ length: leadingBlankDays }, () => null),
     ...activeDays,
   ];
+  const cells: Array<Date | null> = [
+    ...baseCells,
+    ...Array.from(
+      { length: balancedWeekCount * 7 - baseCells.length },
+      () => null
+    ),
+  ];
+  const weeks = Array.from({ length: balancedWeekCount }, (_, weekIndex) =>
+    cells.slice(weekIndex * 7, weekIndex * 7 + 7)
+  );
+  const weekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const rangeLabel = `${formatActivityDate(displayStart)} - ${formatActivityDate(
     todayDate
   )}`;
@@ -155,63 +166,97 @@ function ActivityGrid({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="font-literary text-xl font-semibold text-[var(--charcoal)]">
-            Recent writing days
+            Writing calendar
           </h2>
           <p className="mt-1 text-sm text-[var(--muted)]">
             {rangeLabel}
           </p>
-          {!profileCreatedInRange ? (
-            <p className="mt-1 text-xs font-semibold text-[var(--sage-dark)]">
-              Profile created {formatActivityDate(profileCreatedDate)}
-            </p>
-          ) : null}
         </div>
         <div className="flex items-center gap-2 text-xs font-semibold text-[var(--muted)]">
           <span>Less</span>
-          <span className="size-2.5 rounded-sm bg-[var(--paper-muted)]" />
-          <span className="size-2.5 rounded-sm bg-[var(--sage-soft)]" />
-          <span className="size-2.5 rounded-sm bg-[var(--sage)]" />
-          <span className="size-2.5 rounded-sm bg-[var(--sage-dark)]" />
+          <span className="size-3 rounded-sm bg-[var(--paper-muted)]" />
+          <span className="size-3 rounded-sm bg-[var(--sage-soft)]" />
+          <span className="size-3 rounded-sm bg-[var(--sage)]" />
+          <span className="size-3 rounded-sm bg-[var(--sage-dark)]" />
           <span>More</span>
         </div>
       </div>
-      <div className="mt-5 overflow-x-auto pb-1">
-        <div className="grid auto-cols-max grid-flow-col grid-rows-7 gap-1">
-          {cells.map((date, index) => {
-            if (!date) {
-              return (
-                <div
-                  aria-hidden="true"
-                  className="size-2.5"
-                  key={`blank-${index}`}
-                />
-              );
-            }
-
-            const key = getDateKey(date);
-            const day = activityByDate.get(key);
-            const isProfileCreatedDay = key === getDateKey(profileCreatedDate);
-            const titleParts = [
-              `${key}: ${(day?.wordsWritten ?? 0).toLocaleString()} words`,
-            ];
-
-            if (isProfileCreatedDay) {
-              titleParts.push("profile created");
-            }
-
-            return (
+      <div className="mt-5 overflow-hidden pb-1">
+        <div className="flex justify-end">
+          <div className="w-max">
+            <div className="grid grid-cols-[2rem_auto] gap-x-2">
+              <div aria-hidden="true" />
               <div
-                aria-label={titleParts.join(", ")}
-                className={`size-2.5 rounded-[3px] ${getActivityTone(day)} ${
-                  isProfileCreatedDay
-                    ? "ring-2 ring-[var(--sunset)] ring-offset-1 ring-offset-white"
-                    : ""
-                }`}
-                key={key}
-                title={titleParts.join(", ")}
-              />
-            );
-          })}
+                className="grid gap-1"
+                style={{
+                  gridTemplateColumns: `repeat(${balancedWeekCount}, 0.875rem)`,
+                }}
+              >
+                {weeks.map((week, weekIndex) => {
+                  const monthStart = week.find(
+                    (date) => date?.getUTCDate() === 1
+                  );
+
+                  return (
+                    <div
+                      className="h-4 text-[0.65rem] font-bold uppercase leading-4 text-[var(--muted)]"
+                      key={`month-${weekIndex}`}
+                    >
+                      {monthStart ? getActivityMonthLabel(monthStart) : ""}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="grid grid-rows-7 gap-1">
+                {weekdayLabels.map((label) => (
+                  <div
+                    className="h-3.5 text-right text-[0.65rem] font-semibold leading-[0.875rem] text-[var(--muted)]"
+                    key={label}
+                  >
+                    {label}
+                  </div>
+                ))}
+              </div>
+              <div className="grid auto-cols-max grid-flow-col grid-rows-7 gap-1">
+                {cells.map((date, index) => {
+                  if (!date) {
+                    return (
+                      <div
+                        aria-hidden="true"
+                        className="size-3.5"
+                        key={`blank-${index}`}
+                      />
+                    );
+                  }
+
+                  const key = getDateKey(date);
+                  const day = activityByDate.get(key);
+                  const isProfileCreatedDay =
+                    key === getDateKey(profileCreatedDate);
+                  const titleParts = [
+                    `${key}: ${(day?.wordsWritten ?? 0).toLocaleString()} words`,
+                  ];
+
+                  if (isProfileCreatedDay) {
+                    titleParts.push("profile created");
+                  }
+
+                  return (
+                    <div
+                      aria-label={titleParts.join(", ")}
+                      className={`size-3.5 rounded-[3px] ${getActivityTone(day)} ${
+                        isProfileCreatedDay
+                          ? "ring-2 ring-[var(--sunset)] ring-offset-1 ring-offset-white"
+                          : ""
+                      }`}
+                      key={key}
+                      title={titleParts.join(", ")}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </SurfaceCard>
@@ -396,19 +441,24 @@ export default async function Home() {
     redirect("/login");
   }
 
-  const [currentUser, recentWorks, writingStreaks, todayProgress, activityDays] =
+  const currentUser = await prisma.user.findUnique({
+    where: {
+      id: userId,
+    },
+    select: {
+      name: true,
+      username: true,
+      email: true,
+      createdAt: true,
+    },
+  });
+
+  if (!currentUser) {
+    redirect("/login");
+  }
+
+  const [recentWorks, writingStreaks, todayProgress, activityDays] =
     await Promise.all([
-    prisma.user.findUnique({
-      where: {
-        id: userId,
-      },
-      select: {
-        name: true,
-        username: true,
-        email: true,
-        createdAt: true,
-      },
-    }),
     prisma.entry.findMany({
       where: {
         authorId: userId,
@@ -448,14 +498,7 @@ export default async function Home() {
       where: {
         userId,
         date: {
-          gte: (() => {
-            const date = new Date();
-
-            date.setUTCHours(0, 0, 0, 0);
-            date.setUTCMonth(date.getUTCMonth() - 6);
-            date.setUTCDate(date.getUTCDate() + 1);
-            return date;
-          })(),
+          gte: normalizeUtcDate(currentUser.createdAt),
         },
       },
       orderBy: {
@@ -469,10 +512,6 @@ export default async function Home() {
       },
     }),
   ]);
-
-  if (!currentUser) {
-    redirect("/login");
-  }
 
   const pages = [
     { href: "/write", label: "Continue Writing", caption: "Open the focused editor." },
