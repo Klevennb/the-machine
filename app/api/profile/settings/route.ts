@@ -3,6 +3,7 @@ import { Prisma, ProfileVisibility } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserId } from "@/lib/session";
+import { syncActiveWordGoal } from "@/lib/writing-progress";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -106,61 +107,76 @@ export async function PATCH(request: Request) {
     PROFILE_VISIBILITIES.includes(body.profileVisibility as ProfileVisibility)
       ? (body.profileVisibility as ProfileVisibility)
       : undefined;
+  const dailyTargetWords = cleanNumber(body.dailyTargetWords, 500, 50000);
+  const streakGoalDays = cleanNumber(body.streakGoalDays, 7, 365);
+  const shouldSyncWordGoal =
+    dailyTargetWords !== undefined || streakGoalDays !== undefined;
 
   try {
-    const user = await prisma.user.update({
-      where: {
-        id: userId,
-      },
-      data: {
-        name: cleanOptionalString(body.name, 80),
-        username,
-        bio: cleanOptionalString(body.bio, 500),
-        timezone: cleanOptionalString(body.timezone, 80) ?? undefined,
-        profileVisibility,
-        isProfilePublic:
-          profileVisibility === undefined
-            ? undefined
-            : profileVisibility === ProfileVisibility.PUBLIC,
-        showEmailOnProfile: cleanBoolean(body.showEmailOnProfile),
-        allowNsfwStories: cleanBoolean(body.allowNsfwStories),
-        favoriteGenres: cleanGenreList(body.favoriteGenres),
-        mutedGenres: cleanGenreList(body.mutedGenres),
-        feedIncludesPublic: cleanBoolean(body.feedIncludesPublic),
-        feedIncludesFriends: cleanBoolean(body.feedIncludesFriends),
-        feedIncludesPrompts: cleanBoolean(body.feedIncludesPrompts),
-        dailyTargetWords: cleanNumber(body.dailyTargetWords, 500, 50000),
-        streakGoalDays: cleanNumber(body.streakGoalDays, 7, 365),
-        showProfileSection: cleanBoolean(body.showProfileSection),
-        showPreferencesSection: cleanBoolean(body.showPreferencesSection),
-        showFeedSection: cleanBoolean(body.showFeedSection),
-        showGoalsSection: cleanBoolean(body.showGoalsSection),
-        showFriendsSection: cleanBoolean(body.showFriendsSection),
-      },
-      select: {
-        id: true,
-        name: true,
-        username: true,
-        bio: true,
-        email: true,
-        timezone: true,
-        profileVisibility: true,
-        showEmailOnProfile: true,
-        allowNsfwStories: true,
-        favoriteGenres: true,
-        mutedGenres: true,
-        feedIncludesPublic: true,
-        feedIncludesFriends: true,
-        feedIncludesPrompts: true,
-        dailyTargetWords: true,
-        streakGoalDays: true,
-        showProfileSection: true,
-        showPreferencesSection: true,
-        showFeedSection: true,
-        showGoalsSection: true,
-        showFriendsSection: true,
-        updatedAt: true,
-      },
+    const user = await prisma.$transaction(async (tx) => {
+      const updatedUser = await tx.user.update({
+        where: {
+          id: userId,
+        },
+        data: {
+          name: cleanOptionalString(body.name, 80),
+          username,
+          bio: cleanOptionalString(body.bio, 500),
+          timezone: cleanOptionalString(body.timezone, 80) ?? undefined,
+          profileVisibility,
+          isProfilePublic:
+            profileVisibility === undefined
+              ? undefined
+              : profileVisibility === ProfileVisibility.PUBLIC,
+          showEmailOnProfile: cleanBoolean(body.showEmailOnProfile),
+          allowNsfwStories: cleanBoolean(body.allowNsfwStories),
+          favoriteGenres: cleanGenreList(body.favoriteGenres),
+          mutedGenres: cleanGenreList(body.mutedGenres),
+          feedIncludesPublic: cleanBoolean(body.feedIncludesPublic),
+          feedIncludesFriends: cleanBoolean(body.feedIncludesFriends),
+          feedIncludesPrompts: cleanBoolean(body.feedIncludesPrompts),
+          dailyTargetWords,
+          streakGoalDays,
+          showProfileSection: cleanBoolean(body.showProfileSection),
+          showPreferencesSection: cleanBoolean(body.showPreferencesSection),
+          showFeedSection: cleanBoolean(body.showFeedSection),
+          showGoalsSection: cleanBoolean(body.showGoalsSection),
+          showFriendsSection: cleanBoolean(body.showFriendsSection),
+        },
+        select: {
+          id: true,
+          name: true,
+          username: true,
+          bio: true,
+          email: true,
+          timezone: true,
+          profileVisibility: true,
+          showEmailOnProfile: true,
+          allowNsfwStories: true,
+          favoriteGenres: true,
+          mutedGenres: true,
+          feedIncludesPublic: true,
+          feedIncludesFriends: true,
+          feedIncludesPrompts: true,
+          dailyTargetWords: true,
+          streakGoalDays: true,
+          showProfileSection: true,
+          showPreferencesSection: true,
+          showFeedSection: true,
+          showGoalsSection: true,
+          showFriendsSection: true,
+          updatedAt: true,
+        },
+      });
+
+      if (shouldSyncWordGoal) {
+        await syncActiveWordGoal(tx, userId, {
+          dailyTargetWords: updatedUser.dailyTargetWords,
+          streakGoalDays: updatedUser.streakGoalDays,
+        });
+      }
+
+      return updatedUser;
     });
 
     return Response.json({ user });
