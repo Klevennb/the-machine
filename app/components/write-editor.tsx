@@ -168,7 +168,7 @@ type WritingProgress = {
 
 function Placeholder() {
   return (
-    <div className="pointer-events-none absolute left-6 top-6 font-literary text-3xl font-bold text-[var(--paper-deep)]">
+    <div className="pointer-events-none absolute inset-0 px-6 py-6 font-literary text-lg leading-9 text-[var(--paper-deep)] md:px-10 md:py-10">
       Start drafting here...
     </div>
   );
@@ -553,6 +553,12 @@ export function WriteEditor({
   const [publicAuthorNote, setPublicAuthorNote] = useState(
     initialDraft?.publicAuthorNote ?? ""
   );
+  const [isPrivateNoteOpen, setIsPrivateNoteOpen] = useState(() =>
+    Boolean(initialDraft?.privateAuthorNote.trim())
+  );
+  const [isPublicNoteOpen, setIsPublicNoteOpen] = useState(() =>
+    Boolean(initialDraft?.publicAuthorNote.trim())
+  );
   const [plainText, setPlainText] = useState(initialDraft?.plainText ?? "");
   const [wordCount, setWordCount] = useState(initialDraft?.wordCount ?? 0);
   const [content, setContent] = useState<DraftContent>(() =>
@@ -771,29 +777,51 @@ export function WriteEditor({
           </label>
 
           <div className="grid gap-4 lg:grid-cols-2">
-            <label className="block">
-              <span className="mb-2 block text-sm font-bold text-[var(--charcoal)]">
-                Private note
-              </span>
-              <textarea
-                className="app-field min-h-28 w-full px-4 py-3"
-                onChange={(event) => setPrivateAuthorNote(event.target.value)}
-                placeholder="Notes only you can see..."
-                value={privateAuthorNote}
-              />
-            </label>
+            <div>
+              <button
+                className="cursor-pointer text-sm font-bold text-[var(--sage-dark)] hover:text-[var(--charcoal)]"
+                onClick={() => setIsPrivateNoteOpen((current) => !current)}
+                type="button"
+              >
+                {isPrivateNoteOpen ? "- Hide private note" : "+ Add private note"}
+              </button>
+              {isPrivateNoteOpen ? (
+                <label className="mt-3 block">
+                  <span className="sr-only">Private note</span>
+                  <textarea
+                    className="app-field min-h-24 w-full px-4 py-3"
+                    onChange={(event) =>
+                      setPrivateAuthorNote(event.target.value)
+                    }
+                    placeholder="Notes only you can see..."
+                    value={privateAuthorNote}
+                  />
+                </label>
+              ) : null}
+            </div>
 
-            <label className="block">
-              <span className="mb-2 block text-sm font-bold text-[var(--charcoal)]">
-                Public note
-              </span>
-              <textarea
-                className="app-field min-h-28 w-full px-4 py-3"
-                onChange={(event) => setPublicAuthorNote(event.target.value)}
-                placeholder="Optional public context for this entry..."
-                value={publicAuthorNote}
-              />
-            </label>
+            <div>
+              <button
+                className="cursor-pointer text-sm font-bold text-[var(--sage-dark)] hover:text-[var(--charcoal)]"
+                onClick={() => setIsPublicNoteOpen((current) => !current)}
+                type="button"
+              >
+                {isPublicNoteOpen ? "- Hide public note" : "+ Add public note"}
+              </button>
+              {isPublicNoteOpen ? (
+                <label className="mt-3 block">
+                  <span className="sr-only">Public note</span>
+                  <textarea
+                    className="app-field min-h-24 w-full px-4 py-3"
+                    onChange={(event) =>
+                      setPublicAuthorNote(event.target.value)
+                    }
+                    placeholder="Optional public context for this entry..."
+                    value={publicAuthorNote}
+                  />
+                </label>
+              ) : null}
+            </div>
           </div>
         </div>
         <ToolbarPlugin />
