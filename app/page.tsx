@@ -127,32 +127,20 @@ function ActivityGrid({
   const profileCreatedDate = normalizeUtcDate(profileCreatedAt);
   const displayStart =
     profileCreatedDate <= todayDate ? profileCreatedDate : todayDate;
-  const leadingBlankDays = displayStart.getUTCDay();
-  const activeDays: Date[] = [];
-
-  for (
-    let cursor = displayStart;
-    cursor <= todayDate;
-    cursor = addUtcDays(cursor, 1)
-  ) {
-    activeDays.push(cursor);
-  }
-
-  const rawWeekCount = Math.ceil((leadingBlankDays + activeDays.length) / 7);
+  const rawCalendarStart = addUtcDays(displayStart, -displayStart.getUTCDay());
+  const rawCalendarEnd = addUtcDays(todayDate, 6 - todayDate.getUTCDay());
+  const rawWeekCount = Math.ceil(
+    (rawCalendarEnd.getTime() - rawCalendarStart.getTime()) /
+      (7 * 24 * 60 * 60 * 1000)
+  );
   const balancedWeekCount = Math.max(4, Math.ceil(rawWeekCount / 4) * 4);
-  const leadingBlankColumns = balancedWeekCount - rawWeekCount;
-  const baseCells: Array<Date | null> = [
-    ...Array.from({ length: leadingBlankColumns * 7 }, () => null),
-    ...Array.from({ length: leadingBlankDays }, () => null),
-    ...activeDays,
-  ];
-  const cells: Array<Date | null> = [
-    ...baseCells,
-    ...Array.from(
-      { length: balancedWeekCount * 7 - baseCells.length },
-      () => null
-    ),
-  ];
+  const calendarStart = addUtcDays(
+    rawCalendarEnd,
+    -(balancedWeekCount * 7 - 1)
+  );
+  const cells = Array.from({ length: balancedWeekCount * 7 }, (_, index) =>
+    addUtcDays(calendarStart, index)
+  );
   const weeks = Array.from({ length: balancedWeekCount }, (_, weekIndex) =>
     cells.slice(weekIndex * 7, weekIndex * 7 + 7)
   );
@@ -219,12 +207,15 @@ function ActivityGrid({
               </div>
               <div className="grid auto-cols-max grid-flow-col grid-rows-7 gap-1">
                 {cells.map((date, index) => {
-                  if (!date) {
+                  const isOutsideHistory =
+                    date < displayStart || date > todayDate;
+
+                  if (isOutsideHistory) {
                     return (
                       <div
                         aria-hidden="true"
-                        className="size-3.5"
-                        key={`blank-${index}`}
+                        className="size-3.5 rounded-[3px] bg-[var(--paper-muted)] opacity-60"
+                        key={`outside-${index}`}
                       />
                     );
                   }
