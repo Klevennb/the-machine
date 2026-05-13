@@ -5,6 +5,7 @@ import { MobileDisclosure } from "@/app/components/mobile-disclosure";
 import { PrimaryButton, ProgressRing, StreakChip, SurfaceCard } from "@/app/components/app-ui";
 import { ProtectedPageShell } from "@/app/components/protected-page-shell";
 import { authOptions } from "@/lib/auth";
+import { getDailyAuthorAdvice, type AuthorAdvice } from "@/lib/author-advice";
 import { prisma } from "@/lib/prisma";
 import { getTodayWritingProgress } from "@/lib/writing-progress";
 
@@ -133,6 +134,35 @@ function ActivityGrid({
           );
         })}
       </div>
+    </SurfaceCard>
+  );
+}
+
+function AuthorAdviceCard({ advice }: { advice: AuthorAdvice }) {
+  return (
+    <SurfaceCard className="flex min-h-72 flex-col justify-center bg-[var(--paper-soft)] p-8">
+      <section aria-labelledby="today-quote-heading">
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div
+            aria-hidden="true"
+            className="font-literary text-5xl leading-none text-[var(--sunset)]"
+          >
+            &ldquo;
+          </div>
+          <h2
+            className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--muted)]"
+            id="today-quote-heading"
+          >
+            Today&apos;s quote
+          </h2>
+        </div>
+        <blockquote className="font-literary text-2xl font-semibold leading-10 text-[var(--charcoal)]">
+          {advice.quote}
+        </blockquote>
+        <cite className="mt-5 block text-sm font-bold not-italic text-[var(--sage-dark)]">
+          {advice.author}
+        </cite>
+      </section>
     </SurfaceCard>
   );
 }
@@ -363,6 +393,7 @@ export default async function Home() {
   const progressPercent = Math.round(
     (todayProgress.wordsWritten / Math.max(todayProgress.targetWords, 1)) * 100
   );
+  const authorAdvice = getDailyAuthorAdvice(todayProgress.date);
 
   return (
     <ProtectedPageShell
@@ -377,28 +408,31 @@ export default async function Home() {
             recentWorks={recentWorks}
             writingStreaks={writingStreaks}
           />
-          <SurfaceCard className="grid items-center gap-8 p-8 md:grid-cols-[auto_minmax(0,1fr)]">
-            <ProgressRing
-              caption={`of ${todayProgress.targetWords.toLocaleString()} words`}
-              label={todayProgress.wordsWritten.toLocaleString()}
-              value={progressPercent}
-            />
-            <div>
-              <StreakChip>
-                {todayProgress.currentStreakDays} day streak
-              </StreakChip>
-              <h2 className="mt-5 font-literary text-4xl font-bold leading-tight text-[var(--charcoal)]">
-                Steady progress, {getDisplayHandle(currentUser).replace(/^@/, "")}.
-              </h2>
-              <p className="mt-4 max-w-xl text-base leading-7 text-[var(--charcoal)]/75">
-                Every saved draft builds your private daily writing momentum.
-                Your best streak is {todayProgress.bestStreakDays} days.
-              </p>
-              <PrimaryButton className="mt-6" href="/write">
-                Continue Writing
-              </PrimaryButton>
-            </div>
-          </SurfaceCard>
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
+            <SurfaceCard className="grid items-center gap-8 p-8 md:grid-cols-[auto_minmax(0,1fr)]">
+              <ProgressRing
+                caption={`of ${todayProgress.targetWords.toLocaleString()} words`}
+                label={todayProgress.wordsWritten.toLocaleString()}
+                value={progressPercent}
+              />
+              <div>
+                <StreakChip>
+                  {todayProgress.currentStreakDays} day streak
+                </StreakChip>
+                <h2 className="mt-5 font-literary text-4xl font-bold leading-tight text-[var(--charcoal)]">
+                  Steady progress, {getDisplayHandle(currentUser).replace(/^@/, "")}.
+                </h2>
+                <p className="mt-4 max-w-xl text-base leading-7 text-[var(--charcoal)]/75">
+                  Every saved draft builds your private daily writing momentum.
+                  Your best streak is {todayProgress.bestStreakDays} days.
+                </p>
+                <PrimaryButton className="mt-6" href="/write">
+                  Continue Writing
+                </PrimaryButton>
+              </div>
+            </SurfaceCard>
+            <AuthorAdviceCard advice={authorAdvice} />
+          </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             {pages.map((page) => (
