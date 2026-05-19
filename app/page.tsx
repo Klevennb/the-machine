@@ -133,7 +133,7 @@ function ActivityGrid({
     (rawCalendarEnd.getTime() - rawCalendarStart.getTime()) /
       (7 * 24 * 60 * 60 * 1000)
   );
-  const balancedWeekCount = Math.max(4, Math.ceil(rawWeekCount / 4) * 4);
+  const balancedWeekCount = Math.max(12, Math.ceil(rawWeekCount / 4) * 4);
   const calendarStart = addUtcDays(
     rawCalendarEnd,
     -(balancedWeekCount * 7 - 1)
@@ -169,84 +169,91 @@ function ActivityGrid({
           <span>More</span>
         </div>
       </div>
-      <div className="mt-5 overflow-hidden pb-1">
-        <div className="flex justify-end">
-          <div className="w-max">
-            <div className="grid grid-cols-[2rem_auto] gap-x-2">
-              <div aria-hidden="true" />
+      <div className="mt-5 min-w-0 pb-1">
+        <div className="grid w-full grid-cols-[2.25rem_minmax(0,1fr)] gap-x-2">
+          <div aria-hidden="true" />
+          <div
+            className="grid min-w-0 gap-1"
+            style={{
+              gridTemplateColumns: `repeat(${balancedWeekCount}, minmax(0, 1fr))`,
+            }}
+          >
+            {weeks.map((week, weekIndex) => {
+              const monthStart = week.find(
+                (date) => date?.getUTCDate() === 1
+              );
+
+              return (
+                <div
+                  className="min-w-0 truncate text-[0.65rem] font-bold uppercase leading-4 text-[var(--muted)]"
+                  key={`month-${weekIndex}`}
+                >
+                  {monthStart ? getActivityMonthLabel(monthStart) : ""}
+                </div>
+              );
+            })}
+          </div>
+          <div
+            className="grid gap-1"
+            style={{
+              gridTemplateRows: "repeat(7, minmax(0, 1fr))",
+            }}
+          >
+            {weekdayLabels.map((label) => (
               <div
-                className="grid gap-1"
-                style={{
-                  gridTemplateColumns: `repeat(${balancedWeekCount}, 0.875rem)`,
-                }}
+                className="flex items-center justify-end text-[0.65rem] font-semibold leading-none text-[var(--muted)]"
+                key={label}
               >
-                {weeks.map((week, weekIndex) => {
-                  const monthStart = week.find(
-                    (date) => date?.getUTCDate() === 1
-                  );
-
-                  return (
-                    <div
-                      className="h-4 text-[0.65rem] font-bold uppercase leading-4 text-[var(--muted)]"
-                      key={`month-${weekIndex}`}
-                    >
-                      {monthStart ? getActivityMonthLabel(monthStart) : ""}
-                    </div>
-                  );
-                })}
+                {label}
               </div>
-              <div className="grid grid-rows-7 gap-1">
-                {weekdayLabels.map((label) => (
+            ))}
+          </div>
+          <div
+            className="grid grid-flow-col gap-1"
+            style={{
+              gridTemplateColumns: `repeat(${balancedWeekCount}, minmax(0, 1fr))`,
+              gridTemplateRows: "repeat(7, minmax(0, 1fr))",
+            }}
+          >
+            {cells.map((date, index) => {
+              const isOutsideHistory =
+                date < displayStart || date > todayDate;
+
+              if (isOutsideHistory) {
+                return (
                   <div
-                    className="h-3.5 text-right text-[0.65rem] font-semibold leading-[0.875rem] text-[var(--muted)]"
-                    key={label}
-                  >
-                    {label}
-                  </div>
-                ))}
-              </div>
-              <div className="grid auto-cols-max grid-flow-col grid-rows-7 gap-1">
-                {cells.map((date, index) => {
-                  const isOutsideHistory =
-                    date < displayStart || date > todayDate;
+                    aria-hidden="true"
+                    className="aspect-square w-full rounded-[4px] bg-[var(--paper-muted)] opacity-60"
+                    key={`outside-${index}`}
+                  />
+                );
+              }
 
-                  if (isOutsideHistory) {
-                    return (
-                      <div
-                        aria-hidden="true"
-                        className="size-3.5 rounded-[3px] bg-[var(--paper-muted)] opacity-60"
-                        key={`outside-${index}`}
-                      />
-                    );
-                  }
+              const key = getDateKey(date);
+              const day = activityByDate.get(key);
+              const isProfileCreatedDay =
+                key === getDateKey(profileCreatedDate);
+              const titleParts = [
+                `${key}: ${(day?.wordsWritten ?? 0).toLocaleString()} words`,
+              ];
 
-                  const key = getDateKey(date);
-                  const day = activityByDate.get(key);
-                  const isProfileCreatedDay =
-                    key === getDateKey(profileCreatedDate);
-                  const titleParts = [
-                    `${key}: ${(day?.wordsWritten ?? 0).toLocaleString()} words`,
-                  ];
+              if (isProfileCreatedDay) {
+                titleParts.push("profile created");
+              }
 
-                  if (isProfileCreatedDay) {
-                    titleParts.push("profile created");
-                  }
-
-                  return (
-                    <div
-                      aria-label={titleParts.join(", ")}
-                      className={`size-3.5 rounded-[3px] ${getActivityTone(day)} ${
-                        isProfileCreatedDay
-                          ? "ring-2 ring-[var(--sunset)] ring-offset-1 ring-offset-white"
-                          : ""
-                      }`}
-                      key={key}
-                      title={titleParts.join(", ")}
-                    />
-                  );
-                })}
-              </div>
-            </div>
+              return (
+                <div
+                  aria-label={titleParts.join(", ")}
+                  className={`aspect-square w-full rounded-[4px] ${getActivityTone(day)} ${
+                    isProfileCreatedDay
+                      ? "ring-2 ring-[var(--sunset)] ring-offset-1 ring-offset-white"
+                      : ""
+                  }`}
+                  key={key}
+                  title={titleParts.join(", ")}
+                />
+              );
+            })}
           </div>
         </div>
       </div>
