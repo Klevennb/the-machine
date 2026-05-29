@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { StreakChip, SurfaceCard } from "@/app/components/app-ui";
 import { ProfileFriendButton } from "@/app/components/profile-friend-button";
 import { ProtectedPageShell } from "@/app/components/protected-page-shell";
+import { invariant } from "@/lib/invariant";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/session";
 
@@ -10,12 +11,16 @@ type UserProfilePageProps = {
 };
 
 function getDisplayName(user: { name: string | null; username: string | null }) {
+  invariant(Boolean(user), "user is required.");
+
   return user.name?.trim() || user.username?.trim() || "Unnamed writer";
 }
 
 function formatDate(value: Date | null) {
+  invariant(value === null || value instanceof Date, "value must be a Date or null.");
+
   if (!value) {
-    return "Not published";
+    return "Not made public";
   }
 
   return value.toLocaleDateString(undefined, {
@@ -26,6 +31,8 @@ function formatDate(value: Date | null) {
 }
 
 function getPreview(entry: { summary: string | null; plainText: string | null }) {
+  invariant(Boolean(entry), "entry is required.");
+
   const preview = entry.summary?.trim() || entry.plainText?.trim();
 
   if (!preview) {
@@ -36,6 +43,8 @@ function getPreview(entry: { summary: string | null; plainText: string | null })
 }
 
 export default async function UserProfilePage({ params }: UserProfilePageProps) {
+  invariant(params instanceof Promise, "params must be a Promise.");
+
   const viewerId = await getCurrentUserId();
 
   if (!viewerId) {
@@ -128,7 +137,7 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
   return (
     <ProtectedPageShell
       title={displayName}
-      description="Public profile details and published public stories are visible here."
+      description="Public profile details and public stories are visible here."
       panelClassName="max-w-6xl"
       showHomeLink
     >
@@ -220,7 +229,7 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
 
         <section className="min-w-0">
           <h2 className="font-literary text-3xl font-semibold text-[var(--charcoal)]">
-            Published Stories
+            Public Stories
           </h2>
           <div className="mt-4 space-y-4">
             {user.entries.length === 0 ? (
@@ -241,7 +250,7 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
                     </h3>
                     <div className="mt-2 flex flex-wrap gap-3 text-xs font-semibold text-[var(--muted)]">
                       <span>{entry.wordCount} words</span>
-                      <span>Published {formatDate(entry.publishedAt)}</span>
+                      <span>Made public {formatDate(entry.publishedAt)}</span>
                       <span>{entry.visibility.toLowerCase()}</span>
                     </div>
                   </div>

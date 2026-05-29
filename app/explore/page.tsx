@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { PrimaryButton, StreakChip, SurfaceCard } from "@/app/components/app-ui";
 import { ProtectedPageShell } from "@/app/components/protected-page-shell";
+import { invariant } from "@/lib/invariant";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/session";
 
@@ -16,6 +17,8 @@ function groupedPrompts(
     tags: string[];
   }>
 ) {
+  invariant(Array.isArray(prompts), "prompts must be an array.");
+
   return prompts.reduce<Record<string, typeof prompts>>((groups, prompt) => {
     groups[prompt.genre] = [...(groups[prompt.genre] ?? []), prompt];
     return groups;
@@ -23,6 +26,8 @@ function groupedPrompts(
 }
 
 export default async function ExplorePage() {
+  invariant(Array.isArray(GENRE_ORDER), "genre order must be configured.");
+
   const userId = await getCurrentUserId();
 
   if (!userId) {
@@ -113,8 +118,8 @@ export default async function ExplorePage() {
                 Mastering the quiet first page
               </h2>
               <p className="mt-4 max-w-2xl text-base leading-7 text-white/80">
-                Start with one thoughtful prompt, then shape it into a draft in
-                the focused editor.
+                Start with one thoughtful prompt, then shape it into a
+                publishable entry in the focused editor.
               </p>
             </div>
             <Link

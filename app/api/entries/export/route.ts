@@ -1,4 +1,5 @@
 import JSZip from "jszip";
+import { invariant, invariantString } from "@/lib/invariant";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/session";
 
@@ -11,6 +12,8 @@ type ExportPayload = {
 };
 
 function sanitizePathPart(value: string) {
+  invariantString(value, "value");
+
   const sanitized = value
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
@@ -21,14 +24,21 @@ function sanitizePathPart(value: string) {
 }
 
 function formatDateForFilename(value: Date | null) {
+  invariant(value === null || value instanceof Date, "value must be a Date or null.");
+
   return (value ?? new Date()).toISOString().slice(0, 10);
 }
 
 function escapeMarkdown(value: string) {
+  invariantString(value, "value");
+
   return value.replace(/\\/g, "\\\\").replace(/\|/g, "\\|");
 }
 
 function section(title: string, body: string | null | undefined) {
+  invariantString(title, "title");
+  invariant(body === undefined || body === null || typeof body === "string", "body must be a string when provided.");
+
   const normalized = body?.trim();
 
   if (!normalized) {
@@ -39,6 +49,8 @@ function section(title: string, body: string | null | undefined) {
 }
 
 function toMarkdown(entry: ExportEntry) {
+  invariant(Boolean(entry), "entry is required.");
+
   const title = entry.title?.trim() || "Untitled Entry";
   const metadata = [
     ["Status", entry.status],
@@ -46,7 +58,7 @@ function toMarkdown(entry: ExportEntry) {
     ["Words", entry.wordCount.toLocaleString()],
     ["Created", entry.createdAt.toISOString()],
     ["Updated", entry.updatedAt.toISOString()],
-    ["Published", entry.publishedAt?.toISOString() ?? "Not published"],
+    ["Made public", entry.publishedAt?.toISOString() ?? "Not made public"],
     ["Prompt", entry.prompt ? `${entry.prompt.title} (${entry.prompt.genre})` : null],
     ["Series", entry.series?.title ?? null],
   ]
@@ -81,6 +93,10 @@ async function getEntriesForExport({
   exportAll: boolean;
   userId: string;
 }) {
+  invariant(Array.isArray(entryIds), "entryIds must be an array.");
+  invariant(typeof exportAll === "boolean", "exportAll must be boolean.");
+  invariantString(userId, "userId");
+
   return prisma.entry.findMany({
     where: {
       authorId: userId,
@@ -140,6 +156,8 @@ async function getEntriesForExport({
 }
 
 export async function POST(request: Request) {
+  invariant(request instanceof Request, "request must be a Request.");
+
   const userId = await getCurrentUserId();
 
   if (!userId) {

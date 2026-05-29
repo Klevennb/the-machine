@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { ProtectedPageShell } from "@/app/components/protected-page-shell";
 import { WriteEditor } from "@/app/components/write-editor";
+import { invariant } from "@/lib/invariant";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/session";
 import { getTodayWritingProgress } from "@/lib/writing-progress";
@@ -10,6 +11,8 @@ type WritePageProps = {
 };
 
 export default async function WritePage({ searchParams }: WritePageProps) {
+  invariant(searchParams instanceof Promise, "searchParams must be a Promise.");
+
   const userId = await getCurrentUserId();
 
   if (!userId) {
@@ -55,7 +58,7 @@ export default async function WritePage({ searchParams }: WritePageProps) {
   return (
     <ProtectedPageShell
       title="Write"
-      description="A focused writing surface with prompts, notes, word count, and draft saving close at hand."
+      description="A focused writing surface with prompts, notes, word count, and publishing close at hand."
       panelClassName="max-w-7xl"
       showHomeLink
     >
