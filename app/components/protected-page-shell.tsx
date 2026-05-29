@@ -1,10 +1,9 @@
-import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { MobileNav, SidebarNav, type NavItem } from "@/app/components/app-nav";
 import { PageHeader } from "@/app/components/app-ui";
 import { SignOutButton } from "@/app/components/sign-out-button";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUserId } from "@/lib/session";
 
 type ProtectedPageShellProps = {
   title: string;
@@ -57,8 +56,7 @@ export async function ProtectedAppShell({
   showHomeLink = false,
   panelClassName,
 }: ProtectedPageShellProps) {
-  const session = await getServerSession(authOptions);
-  const userId = (session?.user as { id?: string } | undefined)?.id ?? null;
+  const userId = await getCurrentUserId();
   const [pendingRequestCount, currentUser] = await Promise.all([
     userId
       ? prisma.friendship.count({

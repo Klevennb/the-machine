@@ -1,12 +1,11 @@
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { MobileDisclosure } from "@/app/components/mobile-disclosure";
 import { PrimaryButton, ProgressRing, StreakChip, SurfaceCard } from "@/app/components/app-ui";
 import { ProtectedPageShell } from "@/app/components/protected-page-shell";
-import { authOptions } from "@/lib/auth";
 import { getDailyAuthorAdvice, type AuthorAdvice } from "@/lib/author-advice";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUserId } from "@/lib/session";
 import { getTodayWritingProgress } from "@/lib/writing-progress";
 
 type RecentWork = {
@@ -432,8 +431,7 @@ function MobileHomeDrawer({
 }
 
 export default async function Home() {
-  const session = await getServerSession(authOptions);
-  const userId = (session?.user as { id?: string } | undefined)?.id ?? null;
+  const userId = await getCurrentUserId();
 
   if (!userId) {
     redirect("/login");

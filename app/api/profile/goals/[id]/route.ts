@@ -1,7 +1,5 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getSessionUserId } from "@/lib/session";
+import { getCurrentUserId } from "@/lib/session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,8 +28,7 @@ function cleanOptionalString(value: string | undefined, maxLength: number) {
 }
 
 export async function PATCH(request: Request, context: GoalRouteContext) {
-  const session = await getServerSession(authOptions);
-  const userId = getSessionUserId(session);
+  const userId = await getCurrentUserId();
 
   if (!userId) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -91,8 +88,7 @@ export async function PATCH(request: Request, context: GoalRouteContext) {
 }
 
 export async function DELETE(_request: Request, context: GoalRouteContext) {
-  const session = await getServerSession(authOptions);
-  const userId = getSessionUserId(session);
+  const userId = await getCurrentUserId();
 
   if (!userId) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });

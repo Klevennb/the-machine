@@ -1,12 +1,10 @@
-import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { SignOutButton } from "@/app/components/sign-out-button";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUserId } from "@/lib/session";
 
 export async function ProtectedHeader() {
-  const session = await getServerSession(authOptions);
-  const userId = (session?.user as { id?: string } | undefined)?.id ?? null;
+  const userId = await getCurrentUserId();
   const pendingRequestCount = userId
     ? await prisma.friendship.count({
         where: {

@@ -1,13 +1,12 @@
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { AuthForm } from "@/app/components/auth-form";
+import { AuthSignIn } from "@/app/components/auth-sign-in";
 import { AuthHeroShell } from "@/app/components/auth-hero-shell";
-import { authOptions } from "@/lib/auth";
+import { getCurrentAuthProviderUserId } from "@/lib/auth";
 
 export default async function LoginPage() {
-  const session = await getServerSession(authOptions);
+  const userId = await getCurrentAuthProviderUserId();
 
-  if (session?.user) {
+  if (userId) {
     redirect("/");
   }
 
@@ -18,7 +17,7 @@ export default async function LoginPage() {
       highlights={["Private by default", "Daily writing goals", "Prompt-led starts"]}
       title="Return to your writing desk."
     >
-      <AuthForm mode="login" />
+      <AuthSignIn />
     </AuthHeroShell>
   );
 }

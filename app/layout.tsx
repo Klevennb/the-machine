@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Literata, Plus_Jakarta_Sans } from "next/font/google";
+import { AuthProvider } from "@/app/components/auth-provider";
 import "./globals.css";
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -14,7 +15,7 @@ const literata = Literata({
 
 export const metadata: Metadata = {
   title: "WriteNow",
-  description: "Protected writing workspace with credentials-based auth.",
+  description: "Protected writing workspace with Clerk authentication.",
 };
 
 export default function RootLayout({
@@ -28,7 +29,7 @@ export default function RootLayout({
       className={`${plusJakarta.variable} ${literata.variable} h-full antialiased`}
     >
       <body className="min-h-full font-sans text-[var(--foreground)]">
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

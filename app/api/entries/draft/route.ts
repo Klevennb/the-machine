@@ -1,8 +1,6 @@
-import { getServerSession } from "next-auth";
 import { Prisma } from "@prisma/client";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getSessionUserId } from "@/lib/session";
+import { getCurrentUserId } from "@/lib/session";
 import { creditEntryWritingProgress } from "@/lib/writing-progress";
 
 export const runtime = "nodejs";
@@ -47,8 +45,7 @@ function getFallbackTitle(title: string, plainText: string) {
 }
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  const userId = getSessionUserId(session);
+  const userId = await getCurrentUserId();
 
   if (!userId) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -78,8 +75,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
-  const userId = getSessionUserId(session);
+  const userId = await getCurrentUserId();
 
   if (!userId) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });

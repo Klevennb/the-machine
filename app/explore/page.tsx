@@ -1,10 +1,9 @@
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { PrimaryButton, StreakChip, SurfaceCard } from "@/app/components/app-ui";
 import { ProtectedPageShell } from "@/app/components/protected-page-shell";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUserId } from "@/lib/session";
 
 const GENRE_ORDER = ["Fantasy", "Science Fiction", "Memoir", "Poetry"];
 
@@ -24,9 +23,9 @@ function groupedPrompts(
 }
 
 export default async function ExplorePage() {
-  const session = await getServerSession(authOptions);
+  const userId = await getCurrentUserId();
 
-  if (!session?.user) {
+  if (!userId) {
     redirect("/login");
   }
 
