@@ -1,17 +1,15 @@
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
 import { ProtectedPageShell } from "@/app/components/protected-page-shell";
 import { UserSearch } from "@/app/components/user-search";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUserId } from "@/lib/session";
 
 function getDisplayName(user: { name: string | null; username: string | null }) {
   return user.name?.trim() || user.username?.trim() || "Unnamed writer";
 }
 
 export default async function SearchPage() {
-  const session = await getServerSession(authOptions);
-  const userId = (session?.user as { id?: string } | undefined)?.id ?? null;
+  const userId = await getCurrentUserId();
 
   if (!userId) {
     redirect("/login");

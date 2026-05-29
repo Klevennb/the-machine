@@ -1,10 +1,9 @@
 import { notFound, redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
 import { StreakChip, SurfaceCard } from "@/app/components/app-ui";
 import { ProfileFriendButton } from "@/app/components/profile-friend-button";
 import { ProtectedPageShell } from "@/app/components/protected-page-shell";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUserId } from "@/lib/session";
 
 type UserProfilePageProps = {
   params: Promise<{ id: string }>;
@@ -37,8 +36,7 @@ function getPreview(entry: { summary: string | null; plainText: string | null })
 }
 
 export default async function UserProfilePage({ params }: UserProfilePageProps) {
-  const session = await getServerSession(authOptions);
-  const viewerId = (session?.user as { id?: string } | undefined)?.id ?? null;
+  const viewerId = await getCurrentUserId();
 
   if (!viewerId) {
     redirect("/login");

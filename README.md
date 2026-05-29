@@ -1,4 +1,4 @@
-# GetWrite - The Machine
+# WriteNow - The Machine
 
 A full-stack social writing platform built with Next.js. Users can write, share their work, discover writing prompts, connect with other writers, and set writing goals.
 
@@ -27,21 +27,29 @@ A full-stack social writing platform built with Next.js. Users can write, share 
 - **Next.js API Routes** - RESTful API endpoints
 - **Prisma 7.7.0** - ORM for database management
 - **PostgreSQL** - Database
-- **NextAuth 4.24.13** - Authentication & authorization
-- **bcrypt 6.0.0** - Password hashing
+- **Clerk (`@clerk/nextjs`)** - Hosted authentication and session management
 
 ### Development Tools
 - **ESLint 9** - Code linting
-- **Node.js 18+** - Runtime
+- **Node.js 20.9+** - Runtime required by Next.js 16
+
+## Authentication Model
+
+Clerk owns identity, sign-in, sign-up, and browser session state. The application still owns its local `User` table and uses local `User.id` for entries, goals, friendships, profile settings, likes, comments, and every other app record.
+
+`User.clerkId` links a Clerk identity to the local app user. Auth-specific implementation details are isolated behind local helpers and wrapper components so Clerk can be swapped for another provider later without rewriting the rest of the app.
+
+Pre-Clerk accounts continue to work through verified email linking. On the first Clerk-authenticated request, the app looks for an existing local user with a verified matching Clerk email. If the local row has no `clerkId`, it is linked to the Clerk user and all existing writing data stays attached to the same local `User.id`. Accounts already linked to another Clerk ID are not silently reassigned.
 
 ## Prerequisites
 
 To run this project, you need:
 
-- **Node.js** 18.x or higher
+- **Node.js** 20.9 or higher
 - **npm** or **yarn** (Node package manager)
 - **PostgreSQL** 12.x or higher
 - A running PostgreSQL database instance
+- A Clerk application with publishable and secret keys
 
 ## Installation & Setup
 
@@ -61,11 +69,13 @@ Create a `.env.local` file in the project root with the following variables:
 # Database
 DATABASE_URL="postgresql://user:password@localhost:5432/getwrite"
 
-# NextAuth
-NEXTAUTH_SECRET="your-secret-key-here"
-NEXTAUTH_URL="http://localhost:3000"
-
-# Optional: Add your provider credentials (Google, GitHub, etc.) if using OAuth
+# Clerk
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="pk_test_..."
+CLERK_SECRET_KEY="sk_test_..."
+NEXT_PUBLIC_CLERK_SIGN_IN_URL="/login"
+NEXT_PUBLIC_CLERK_SIGN_UP_URL="/register"
+NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL="/"
+NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL="/"
 ```
 
 ### 3. Database Setup

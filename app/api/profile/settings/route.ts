@@ -1,8 +1,6 @@
-import { getServerSession } from "next-auth";
 import { Prisma, ProfileVisibility } from "@prisma/client";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getSessionUserId } from "@/lib/session";
+import { getCurrentUserId } from "@/lib/session";
 import { syncActiveWordGoal } from "@/lib/writing-progress";
 
 export const runtime = "nodejs";
@@ -82,8 +80,7 @@ function cleanNumber(
 }
 
 export async function PATCH(request: Request) {
-  const session = await getServerSession(authOptions);
-  const userId = getSessionUserId(session);
+  const userId = await getCurrentUserId();
 
   if (!userId) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
