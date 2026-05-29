@@ -46,6 +46,7 @@ import {
   $patchStyleText,
   $setBlocksType,
 } from "@lexical/selection";
+import { invariant, invariantString } from "@/lib/invariant";
 
 type ToolbarState = {
   canUndo: boolean;
@@ -166,7 +167,73 @@ type WritingProgress = {
   bestStreakDays: number;
 };
 
+type ApiErrorResponse = {
+  ok: false;
+  error: {
+    code: string;
+    message: string;
+    details?: unknown;
+  };
+  requestId: string;
+};
+
+type LegacyErrorResponse = {
+  error?: string;
+};
+
+type PublishEntryResponse = {
+  ok?: true;
+  data?: {
+    draft?: { id: string; updatedAt: string };
+    progress?: WritingProgress;
+  };
+  draft?: { id: string; updatedAt: string };
+  progress?: WritingProgress;
+  requestId?: string;
+};
+
+function isApiErrorResponse(data: unknown): data is ApiErrorResponse {
+  invariant(data !== undefined, "data must be defined.");
+
+  return (
+    data !== null &&
+    typeof data === "object" &&
+    "ok" in data &&
+    (data as { ok: unknown }).ok === false
+  );
+}
+
+function getPublishDraft(data: PublishEntryResponse | ApiErrorResponse | LegacyErrorResponse | null) {
+  invariant(data === null || typeof data === "object", "data must be an object or null.");
+
+  if (!data || isApiErrorResponse(data)) {
+    return undefined;
+  }
+
+  if ("data" in data) {
+    return data.data?.draft;
+  }
+
+  return "draft" in data ? data.draft : undefined;
+}
+
+function getPublishProgress(data: PublishEntryResponse | ApiErrorResponse | LegacyErrorResponse | null) {
+  invariant(data === null || typeof data === "object", "data must be an object or null.");
+
+  if (!data || isApiErrorResponse(data)) {
+    return undefined;
+  }
+
+  if ("data" in data) {
+    return data.data?.progress;
+  }
+
+  return "progress" in data ? data.progress : undefined;
+}
+
 function Placeholder() {
+  invariant(typeof theme === "object", "editor theme must be configured.");
+
   return (
     <div className="pointer-events-none absolute inset-0 px-6 py-6 font-literary text-lg leading-9 text-[var(--paper-deep)] md:px-10 md:py-10">
       Start drafting here...
@@ -175,6 +242,8 @@ function Placeholder() {
 }
 
 function createEmptyEditorState(): DraftContent {
+  invariant(Array.isArray(FONT_SIZES), "font sizes must be configured.");
+
   return {
     root: {
       children: [
@@ -201,6 +270,8 @@ function createEmptyEditorState(): DraftContent {
 function normalizeInitialContent(
   content: Prisma.JsonValue | null | undefined
 ): DraftContent {
+  invariant(content !== undefined || content === undefined, "content may be undefined.");
+
   if (
     !content ||
     typeof content !== "object" ||
@@ -236,6 +307,9 @@ function ToolbarButton({
   label: string;
   onClick: () => void;
 }) {
+  invariantString(label, "label");
+  invariant(typeof onClick === "function", "onClick must be a function.");
+
   return (
     <button
       className={`rounded-full border px-3 py-2 text-sm font-bold transition ${
@@ -252,7 +326,21 @@ function ToolbarButton({
   );
 }
 
+function Spinner({ label }: { label: string }) {
+  invariantString(label, "label");
+
+  return (
+    <span
+      aria-label={label}
+      className="inline-block size-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+      role="status"
+    />
+  );
+}
+
 function getToolbarState(editor: LexicalEditor): ToolbarState {
+  invariant(Boolean(editor), "editor is required.");
+
   return editor.getEditorState().read(() => {
     const selection = $getSelection();
 
@@ -296,11 +384,15 @@ function getToolbarState(editor: LexicalEditor): ToolbarState {
 
 function ToolbarPlugin() {
   const [editor] = useLexicalComposerContext();
+  invariant(Boolean(editor), "editor is required.");
+
   const [toolbarState, setToolbarState] = useState<ToolbarState>(() =>
     getToolbarState(editor)
   );
 
   const refreshToolbar = useCallback(() => {
+    invariant(Boolean(editor), "editor is required.");
+
     const nextState = getToolbarState(editor);
 
     setToolbarState((current) => ({
@@ -350,6 +442,11 @@ function ToolbarPlugin() {
   }, [editor, refreshToolbar]);
 
   const applyBlockType = (value: ToolbarState["blockType"]) => {
+    invariant(
+      ["paragraph", "h1", "h2", "quote", "bullet", "number"].includes(value),
+      "block type must be supported."
+    );
+
     editor.update(() => {
       const selection = $getSelection();
 
@@ -383,6 +480,8 @@ function ToolbarPlugin() {
   };
 
   const applyFontSize = (fontSize: string) => {
+    invariant(FONT_SIZES.includes(fontSize), "font size must be supported.");
+
     editor.update(() => {
       const selection = $getSelection();
 
@@ -395,6 +494,8 @@ function ToolbarPlugin() {
   };
 
   const toggleLink = () => {
+    invariant(Boolean(editor), "editor is required.");
+
     if (toolbarState.isLink) {
       editor.dispatchCommand(TOGGLE_LINK_COMMAND, null);
       return;
@@ -489,9 +590,13 @@ function ToolbarPlugin() {
 }
 
 function StatusBarPlugin() {
+  invariant(typeof useState === "function", "React state must be available.");
+
   const [stats, setStats] = useState({ words: 0, characters: 0 });
 
   const handleChange = (editorState: EditorState) => {
+    invariant(Boolean(editorState), "editorState is required.");
+
     editorState.read(() => {
       const textContent = $getRoot().getTextContent();
       const normalizedText = textContent.trim();
@@ -523,7 +628,11 @@ type CapturePluginProps = {
 };
 
 function CaptureDraftPlugin({ onChange }: CapturePluginProps) {
+  invariant(typeof onChange === "function", "onChange must be a function.");
+
   const handleChange = (editorState: EditorState) => {
+    invariant(Boolean(editorState), "editorState is required.");
+
     editorState.read(() => {
       const plainText = $getRoot().getTextContent();
       const normalizedText = plainText.trim();
@@ -540,11 +649,52 @@ function CaptureDraftPlugin({ onChange }: CapturePluginProps) {
   return <OnChangePlugin onChange={handleChange} />;
 }
 
+async function readApiJson<T>(response: Response): Promise<T | null> {
+  invariant(response instanceof Response, "response must be a Response.");
+
+  try {
+    return (await response.json()) as T;
+  } catch {
+    return null;
+  }
+}
+
+function getApiErrorMessage(data: unknown, fallback: string) {
+  invariantString(fallback, "fallback");
+
+  if (!data) {
+    return `${fallback} The server did not return a usable response.`;
+  }
+
+  if (isApiErrorResponse(data)) {
+    return `${data.error.message} Reference: ${data.requestId}`;
+  }
+
+  if (
+    typeof data === "object" &&
+    "error" in data &&
+    typeof (data as LegacyErrorResponse).error === "string"
+  ) {
+    return (data as LegacyErrorResponse).error ?? fallback;
+  }
+
+  return fallback;
+}
+
+function getPublishedSuccessMessage(updatedAt: string) {
+  invariantString(updatedAt, "updatedAt");
+
+  return `Published ${new Date(updatedAt).toLocaleString()}`;
+}
+
 export function WriteEditor({
   initialDraft,
   initialProgress,
   showPromptPicker,
 }: WriteEditorProps) {
+  invariant(Boolean(initialProgress), "initialProgress is required.");
+  invariant(typeof showPromptPicker === "boolean", "showPromptPicker must be boolean.");
+
   const [entryId, setEntryId] = useState(initialDraft?.id ?? null);
   const [title, setTitle] = useState(initialDraft?.title ?? "");
   const [privateAuthorNote, setPrivateAuthorNote] = useState(
@@ -575,7 +725,7 @@ export function WriteEditor({
   const [promptMessage, setPromptMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState(
-    initialDraft ? "Loaded saved entry." : "Entry not saved yet."
+    initialDraft ? "Loaded published entry." : "Entry not published yet."
   );
   const [dailyProgress, setDailyProgress] = useState(initialProgress);
   const initialEditorState = useMemo(() => JSON.stringify(content), [content]);
@@ -588,6 +738,8 @@ export function WriteEditor({
   );
 
   const requestPrompt = async (resetSeenPrompts = false) => {
+    invariant(typeof resetSeenPrompts === "boolean", "resetSeenPrompts must be boolean.");
+
     setIsLoadingPrompt(true);
     setPromptMessage("Finding a prompt...");
 
@@ -625,7 +777,9 @@ export function WriteEditor({
       );
       setPromptMessage("Prompt selected.");
       setSaveMessage((current) =>
-        current.startsWith("Saved") ? "Draft has unsaved changes." : current
+        current.startsWith("Published")
+          ? "Entry has unpublished changes."
+          : current
       );
     } catch {
       setPromptMessage("Unable to load a prompt.");
@@ -634,9 +788,14 @@ export function WriteEditor({
     }
   };
 
-  const saveDraft = async () => {
+  const publishEntry = async () => {
+    invariant(typeof entryId === "string" || entryId === null, "entryId must be a string or null.");
+    invariantString(title, "title");
+    invariantString(plainText, "plainText");
+    invariant(Number.isFinite(wordCount), "wordCount must be finite.");
+
     setIsSaving(true);
-    setSaveMessage("Saving entry...");
+    setSaveMessage("Publishing entry...");
 
     try {
       const response = await fetch("/api/entries/draft", {
@@ -656,26 +815,26 @@ export function WriteEditor({
         }),
       });
 
-      const data = (await response.json()) as {
-        error?: string;
-        draft?: { id: string; updatedAt: string };
-        progress?: WritingProgress;
-      };
+      const data = await readApiJson<
+        PublishEntryResponse | ApiErrorResponse | LegacyErrorResponse
+      >(response);
+      const draft = getPublishDraft(data);
+      const progress = getPublishProgress(data);
 
-      if (!response.ok || !data.draft) {
-        setSaveMessage(data.error ?? "Unable to save entry.");
+      if (!response.ok || !draft) {
+        setSaveMessage(
+          getApiErrorMessage(data, "Unable to publish entry.")
+        );
         return;
       }
 
-      setEntryId(data.draft.id);
-      if (data.progress) {
-        setDailyProgress(data.progress);
+      setEntryId(draft.id);
+      if (progress) {
+        setDailyProgress(progress);
       }
-      setSaveMessage(
-        `Saved ${new Date(data.draft.updatedAt).toLocaleString()}`
-      );
+      setSaveMessage(getPublishedSuccessMessage(draft.updatedAt));
     } catch {
-      setSaveMessage("Unable to save entry.");
+      setSaveMessage("Unable to publish entry. Check your connection and try again.");
     } finally {
       setIsSaving(false);
     }
@@ -770,7 +929,7 @@ export function WriteEditor({
             <input
               className="app-field w-full px-4 py-3 font-literary text-2xl font-bold"
               onChange={(event) => setTitle(event.target.value)}
-              placeholder="Untitled draft"
+              placeholder="Untitled entry"
               type="text"
               value={title}
             />
@@ -846,20 +1005,34 @@ export function WriteEditor({
               setWordCount(payload.wordCount);
               setContent(payload.content);
               setSaveMessage((current) =>
-                current.startsWith("Saved") ? "Draft has unsaved changes." : current
+                current.startsWith("Published")
+                  ? "Entry has unpublished changes."
+                  : current
               );
             }}
           />
         </div>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="text-sm font-semibold text-[var(--muted)]">{saveMessage}</div>
+          <div
+            aria-live="polite"
+            className="text-sm font-semibold text-[var(--muted)]"
+          >
+            {saveMessage}
+          </div>
           <button
-            className="app-button-primary px-5 py-2.5 text-sm disabled:cursor-not-allowed disabled:bg-[var(--muted)]"
+            className="app-button-primary inline-flex items-center gap-2 px-5 py-2.5 text-sm disabled:cursor-not-allowed disabled:bg-[var(--muted)]"
             disabled={isSaving}
-            onClick={saveDraft}
+            onClick={publishEntry}
             type="button"
           >
-            {isSaving ? "Saving..." : "Save Entry"}
+            {isSaving ? (
+              <>
+                <Spinner label="Publishing entry" />
+                Publishing...
+              </>
+            ) : (
+              "Publish Entry"
+            )}
           </button>
         </div>
         <StatusBarPlugin />

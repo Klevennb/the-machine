@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
+import { invariant, invariantString } from "@/lib/invariant";
 
 type PrismaExecutor = PrismaClient | Prisma.TransactionClient;
 
@@ -16,6 +17,9 @@ export type WritingProgressSnapshot = {
 };
 
 function getDatePartsInTimezone(date: Date, timezone: string) {
+  invariant(date instanceof Date, "date must be a Date.");
+  invariantString(timezone, "timezone");
+
   const formatter = new Intl.DateTimeFormat("en-US", {
     day: "2-digit",
     month: "2-digit",
@@ -37,6 +41,11 @@ function getDatePartsInTimezone(date: Date, timezone: string) {
 }
 
 function normalizeTimezone(timezone: string | null | undefined) {
+  invariant(
+    timezone === null || timezone === undefined || typeof timezone === "string",
+    "timezone must be a string when provided."
+  );
+
   const candidate = timezone?.trim() || FALLBACK_TIMEZONE;
 
   try {
@@ -48,16 +57,24 @@ function normalizeTimezone(timezone: string | null | undefined) {
 }
 
 function getProgressDateForTimezone(timezone: string, now = new Date()) {
+  invariantString(timezone, "timezone");
+  invariant(now instanceof Date, "now must be a Date.");
+
   const parts = getDatePartsInTimezone(now, normalizeTimezone(timezone));
 
   return new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
 }
 
 function formatProgressDate(date: Date) {
+  invariant(date instanceof Date, "date must be a Date.");
+
   return date.toISOString().slice(0, 10);
 }
 
 function addDays(date: Date, days: number) {
+  invariant(date instanceof Date, "date must be a Date.");
+  invariant(Number.isFinite(days), "days must be finite.");
+
   return new Date(date.getTime() + days * MS_PER_DAY);
 }
 
@@ -69,6 +86,10 @@ async function ensureActiveWordGoal(
     streakGoalDays?: number;
   }
 ) {
+  invariant(Boolean(db), "db is required.");
+  invariantString(userId, "userId");
+  invariant(options === undefined || typeof options === "object", "options must be an object when provided.");
+
   const user = await db.user.findUnique({
     where: {
       id: userId,
@@ -163,6 +184,11 @@ async function recalculateStreak(
   today: Date,
   previousBestStreakDays: number
 ) {
+  invariant(Boolean(db), "db is required.");
+  invariantString(goalId, "goalId");
+  invariant(today instanceof Date, "today must be a Date.");
+  invariant(Number.isFinite(previousBestStreakDays), "previousBestStreakDays must be finite.");
+
   const progressDays = await db.dailyProgress.findMany({
     where: {
       goalId,
@@ -219,6 +245,10 @@ export async function syncActiveWordGoal(
     streakGoalDays?: number;
   }
 ) {
+  invariant(Boolean(db), "db is required.");
+  invariantString(userId, "userId");
+  invariant(options === undefined || typeof options === "object", "options must be an object when provided.");
+
   return ensureActiveWordGoal(db, userId, options);
 }
 
@@ -227,6 +257,10 @@ export async function getTodayWritingProgress(
   userId: string,
   now = new Date()
 ): Promise<WritingProgressSnapshot> {
+  invariant(Boolean(db), "db is required.");
+  invariantString(userId, "userId");
+  invariant(now instanceof Date, "now must be a Date.");
+
   const user = await db.user.findUnique({
     where: {
       id: userId,
@@ -301,6 +335,12 @@ export async function creditEntryWritingProgress({
   wordDelta: number;
   now?: Date;
 }): Promise<WritingProgressSnapshot> {
+  invariant(Boolean(db), "db is required.");
+  invariantString(entryId, "entryId");
+  invariantString(userId, "userId");
+  invariant(Number.isFinite(wordDelta), "wordDelta must be finite.");
+  invariant(now instanceof Date, "now must be a Date.");
+
   const user = await db.user.findUnique({
     where: {
       id: userId,
@@ -325,6 +365,7 @@ export async function creditEntryWritingProgress({
     },
     select: {
       id: true,
+      goalId: true,
       wordsWritten: true,
       targetWords: true,
     },
@@ -341,6 +382,7 @@ export async function creditEntryWritingProgress({
       },
       select: {
         id: true,
+        goalId: true,
         wordsWritten: true,
         targetWords: true,
       },
@@ -397,6 +439,7 @@ export async function creditEntryWritingProgress({
       id: dailyProgress.id,
     },
     data: {
+      goalId: goal.id,
       wordsWritten,
       goalMet,
       streakDayNumber: goalMet ? undefined : null,

@@ -4,6 +4,7 @@ import { MobileDisclosure } from "@/app/components/mobile-disclosure";
 import { PrimaryButton, ProgressRing, StreakChip, SurfaceCard } from "@/app/components/app-ui";
 import { ProtectedPageShell } from "@/app/components/protected-page-shell";
 import { getDailyAuthorAdvice, type AuthorAdvice } from "@/lib/author-advice";
+import { invariant } from "@/lib/invariant";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/session";
 import { getTodayWritingProgress } from "@/lib/writing-progress";
@@ -13,6 +14,7 @@ type RecentWork = {
   title: string | null;
   wordCount: number;
   status: string;
+  visibility: string;
   updatedAt: Date;
 };
 
@@ -33,6 +35,8 @@ type ActivityDay = {
 };
 
 function formatRecentDate(date: Date) {
+  invariant(date instanceof Date, "date must be a Date.");
+
   return new Intl.DateTimeFormat("en", {
     month: "short",
     day: "numeric",
@@ -40,6 +44,8 @@ function formatRecentDate(date: Date) {
 }
 
 function formatActivityDate(date: Date) {
+  invariant(date instanceof Date, "date must be a Date.");
+
   return new Intl.DateTimeFormat("en", {
     month: "short",
     day: "numeric",
@@ -49,7 +55,19 @@ function formatActivityDate(date: Date) {
 }
 
 function getWorkTitle(work: RecentWork) {
-  return work.title?.trim() || "Untitled draft";
+  invariant(Boolean(work), "work is required.");
+
+  return work.title?.trim() || "Untitled entry";
+}
+
+function getDisplayStatus(work: RecentWork) {
+  invariant(Boolean(work), "work is required.");
+
+  if (work.status === "PUBLISHED") {
+    return "Public";
+  }
+
+  return null;
 }
 
 function getDisplayHandle(user: {
@@ -57,6 +75,8 @@ function getDisplayHandle(user: {
   username: string | null;
   email: string | null;
 }) {
+  invariant(Boolean(user), "user is required.");
+
   if (user.username?.trim()) {
     return `@${user.username.trim()}`;
   }
@@ -65,16 +85,23 @@ function getDisplayHandle(user: {
 }
 
 function getDateKey(date: Date) {
+  invariant(date instanceof Date, "date must be a Date.");
+
   return date.toISOString().slice(0, 10);
 }
 
 function normalizeUtcDate(date: Date) {
+  invariant(date instanceof Date, "date must be a Date.");
+
   return new Date(
     Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
   );
 }
 
 function addUtcDays(date: Date, days: number) {
+  invariant(date instanceof Date, "date must be a Date.");
+  invariant(Number.isFinite(days), "days must be finite.");
+
   const nextDate = new Date(date);
 
   nextDate.setUTCDate(nextDate.getUTCDate() + days);
@@ -82,6 +109,8 @@ function addUtcDays(date: Date, days: number) {
 }
 
 function getActivityMonthLabel(date: Date) {
+  invariant(date instanceof Date, "date must be a Date.");
+
   return new Intl.DateTimeFormat("en", {
     month: "short",
     timeZone: "UTC",
@@ -89,6 +118,8 @@ function getActivityMonthLabel(date: Date) {
 }
 
 function getActivityTone(day: ActivityDay | undefined) {
+  invariant(day === undefined || Boolean(day), "day must be defined when provided.");
+
   if (!day || day.wordsWritten <= 0) {
     return "bg-[var(--paper-muted)]";
   }
@@ -119,6 +150,10 @@ function ActivityGrid({
   profileCreatedAt: Date;
   today: string;
 }) {
+  invariant(Array.isArray(activityDays), "activityDays must be an array.");
+  invariant(profileCreatedAt instanceof Date, "profileCreatedAt must be a Date.");
+  invariant(typeof today === "string", "today must be a string.");
+
   const activityByDate = new Map(
     activityDays.map((day) => [getDateKey(day.date), day])
   );
@@ -261,6 +296,8 @@ function ActivityGrid({
 }
 
 function AuthorAdviceCard({ advice }: { advice: AuthorAdvice }) {
+  invariant(Boolean(advice), "advice is required.");
+
   return (
     <SurfaceCard className="flex min-h-72 flex-col justify-center bg-[var(--paper-soft)] p-8">
       <section aria-labelledby="today-quote-heading">
@@ -296,6 +333,9 @@ function HomeSidebarContent({
   recentWorks: RecentWork[];
   writingStreaks: WritingStreak[];
 }) {
+  invariant(Array.isArray(recentWorks), "recentWorks must be an array.");
+  invariant(Array.isArray(writingStreaks), "writingStreaks must be an array.");
+
   return (
     <div className="space-y-7">
       <section>
@@ -359,7 +399,10 @@ function HomeSidebarContent({
         </h2>
         <div className="mt-3 space-y-2">
           {recentWorks.length > 0 ? (
-            recentWorks.map((work) => (
+            recentWorks.map((work) => {
+              const status = getDisplayStatus(work);
+
+              return (
               <Link
                 className="block rounded-2xl border border-[var(--line)] bg-white/70 p-4 transition hover:border-[var(--line-strong)] hover:bg-white"
                 href={`/write?entryId=${work.id}`}
@@ -369,19 +412,22 @@ function HomeSidebarContent({
                   <p className="font-bold text-[var(--charcoal)]">
                     {getWorkTitle(work)}
                   </p>
-                  <span className="shrink-0 rounded-full bg-[var(--paper-muted)] px-2 py-1 text-xs font-bold text-[var(--sage-dark)]">
-                    {work.status.toLowerCase()}
-                  </span>
+                  {status ? (
+                    <span className="shrink-0 rounded-full bg-[var(--paper-muted)] px-2 py-1 text-xs font-bold text-[var(--sage-dark)]">
+                      {status}
+                    </span>
+                  ) : null}
                 </div>
                 <p className="mt-2 text-sm text-[var(--muted)]">
                   {work.wordCount.toLocaleString()} words | Updated{" "}
                   {formatRecentDate(work.updatedAt)}
                 </p>
               </Link>
-            ))
+              );
+            })
           ) : (
             <p className="rounded-2xl border border-dashed border-[var(--line-strong)] bg-white/70 p-4 text-sm leading-6 text-[var(--muted)]">
-              Your recent drafts and published pieces will appear here.
+              Your recent entries and public pieces will appear here.
             </p>
           )}
         </div>
@@ -397,6 +443,9 @@ function HomeSidebar({
   recentWorks: RecentWork[];
   writingStreaks: WritingStreak[];
 }) {
+  invariant(Array.isArray(recentWorks), "recentWorks must be an array.");
+  invariant(Array.isArray(writingStreaks), "writingStreaks must be an array.");
+
   return (
     <aside className="hidden rounded-2xl bg-[var(--paper-soft)] p-5 lg:block">
       <HomeSidebarContent
@@ -416,6 +465,10 @@ function MobileHomeDrawer({
   recentWorks: RecentWork[];
   writingStreaks: WritingStreak[];
 }) {
+  invariant(typeof displayHandle === "string", "displayHandle must be a string.");
+  invariant(Array.isArray(recentWorks), "recentWorks must be an array.");
+  invariant(Array.isArray(writingStreaks), "writingStreaks must be an array.");
+
   return (
     <MobileDisclosure
       className="lg:hidden"
@@ -431,6 +484,8 @@ function MobileHomeDrawer({
 }
 
 export default async function Home() {
+  invariant(typeof getCurrentUserId === "function", "auth helper must be available.");
+
   const userId = await getCurrentUserId();
 
   if (!userId) {
@@ -468,6 +523,7 @@ export default async function Home() {
         title: true,
         wordCount: true,
         status: true,
+        visibility: true,
         updatedAt: true,
       },
     }),
@@ -511,7 +567,7 @@ export default async function Home() {
 
   const pages = [
     { href: "/write", label: "Continue Writing", caption: "Open the focused editor." },
-    { href: "/library", label: "Personal Library", caption: "Review drafts and public pieces." },
+    { href: "/library", label: "Personal Library", caption: "Review published entries and public pieces." },
     { href: "/explore", label: "Prompts", caption: "Find a starting point." },
     { href: "/search", label: "Social Discovery", caption: "Find writers and requests." },
   ];
@@ -548,7 +604,7 @@ export default async function Home() {
                   Steady progress, {getDisplayHandle(currentUser).replace(/^@/, "")}.
                 </h2>
                 <p className="mt-4 max-w-xl text-base leading-7 text-[var(--charcoal)]/75">
-                  Every saved draft builds your private daily writing momentum.
+                  Every published entry builds your private daily writing momentum.
                   Your best streak is {todayProgress.bestStreakDays} days.
                 </p>
                 <PrimaryButton className="mt-6" href="/write">

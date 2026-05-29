@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { invariant, invariantString } from "@/lib/invariant";
 
 type LibraryEntry = {
   id: string;
@@ -22,9 +23,72 @@ type LibraryBrowserProps = {
   initialEntries: LibraryEntry[];
 };
 
+type ApiErrorResponse = {
+  ok: false;
+  error: {
+    code: string;
+    message: string;
+    details?: unknown;
+  };
+  requestId: string;
+};
+
+type LegacyErrorResponse = {
+  error?: string;
+};
+
+type VisibilityResponse = {
+  ok?: true;
+  data?: {
+    entry?: {
+      id: string;
+      visibility: "PRIVATE" | "PUBLIC";
+      status: "PUBLISHED";
+      updatedAt: string;
+      publishedAt: string;
+    };
+  };
+  entry?: {
+    id: string;
+    visibility: "PRIVATE" | "PUBLIC";
+    status: "PUBLISHED";
+    updatedAt: string;
+    publishedAt: string;
+  };
+};
+
+function isApiErrorResponse(data: unknown): data is ApiErrorResponse {
+  invariant(data !== undefined, "data must be defined.");
+
+  return (
+    data !== null &&
+    typeof data === "object" &&
+    "ok" in data &&
+    (data as { ok: unknown }).ok === false
+  );
+}
+
+function getVisibilityEntry(
+  data: VisibilityResponse | ApiErrorResponse | LegacyErrorResponse | null
+) {
+  invariant(data === null || typeof data === "object", "data must be an object or null.");
+
+  if (!data || isApiErrorResponse(data)) {
+    return undefined;
+  }
+
+  if ("data" in data) {
+    return data.data?.entry;
+  }
+
+  return "entry" in data ? data.entry : undefined;
+}
+
 function formatDate(value: string | null) {
+  invariant(value === null || typeof value === "string", "value must be a string or null.");
+
   if (!value) {
-    return "Not published";
+    return "Not made public";
   }
 
   return new Date(value).toLocaleDateString(undefined, {
@@ -35,10 +99,14 @@ function formatDate(value: string | null) {
 }
 
 function getEntryTitle(entry: LibraryEntry) {
+  invariant(Boolean(entry), "entry is required.");
+
   return entry.title?.trim() || "Untitled Entry";
 }
 
 function getPreview(entry: LibraryEntry) {
+  invariant(Boolean(entry), "entry is required.");
+
   const preview = entry.summary?.trim() || entry.plainText?.trim();
 
   if (!preview) {
@@ -48,7 +116,67 @@ function getPreview(entry: LibraryEntry) {
   return preview.replace(/\s+/g, " ").slice(0, 220);
 }
 
+function getDisplayStatus(status: LibraryEntry["status"]) {
+  invariant(["DRAFT", "PUBLISHED", "ARCHIVED"].includes(status), "status must be supported.");
+
+  if (status === "DRAFT") {
+    return "published";
+  }
+
+  if (status === "PUBLISHED") {
+    return "made public";
+  }
+
+  return "archived";
+}
+
+function Spinner({ label }: { label: string }) {
+  invariantString(label, "label");
+
+  return (
+    <span
+      aria-label={label}
+      className="inline-block size-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+      role="status"
+    />
+  );
+}
+
+async function readApiJson<T>(response: Response): Promise<T | null> {
+  invariant(response instanceof Response, "response must be a Response.");
+
+  try {
+    return (await response.json()) as T;
+  } catch {
+    return null;
+  }
+}
+
+function getApiErrorMessage(data: unknown, fallback: string) {
+  invariantString(fallback, "fallback");
+
+  if (!data) {
+    return `${fallback} The server did not return a usable response.`;
+  }
+
+  if (isApiErrorResponse(data)) {
+    return `${data.error.message} Reference: ${data.requestId}`;
+  }
+
+  if (
+    typeof data === "object" &&
+    "error" in data &&
+    typeof (data as LegacyErrorResponse).error === "string"
+  ) {
+    return (data as LegacyErrorResponse).error ?? fallback;
+  }
+
+  return fallback;
+}
+
 export function LibraryBrowser({ initialEntries }: LibraryBrowserProps) {
+  invariant(Array.isArray(initialEntries), "initialEntries must be an array.");
+
   const [entries, setEntries] = useState(initialEntries);
   const [query, setQuery] = useState("");
   const [selectedEntryId, setSelectedEntryId] = useState(
@@ -93,6 +221,8 @@ export function LibraryBrowser({ initialEntries }: LibraryBrowserProps) {
   const selectedExportCount = selectedExportIds.length;
 
   const toggleExportSelection = (entryId: string) => {
+    invariantString(entryId, "entryId");
+
     setSelectedExportIds((current) =>
       current.includes(entryId)
         ? current.filter((selectedId) => selectedId !== entryId)
@@ -102,6 +232,8 @@ export function LibraryBrowser({ initialEntries }: LibraryBrowserProps) {
   };
 
   const exportEntries = async (exportAll: boolean) => {
+    invariant(typeof exportAll === "boolean", "exportAll must be boolean.");
+
     if (!exportAll && selectedExportIds.length === 0) {
       return;
     }
@@ -123,9 +255,7 @@ export function LibraryBrowser({ initialEntries }: LibraryBrowserProps) {
       });
 
       if (!response.ok) {
-        const data = (await response.json().catch(() => null)) as
-          | { error?: string }
-          | null;
+        const data = await readApiJson<LegacyErrorResponse>(response);
 
         setExportMessage(data?.error ?? "Unable to export library.");
         return;
@@ -158,12 +288,16 @@ export function LibraryBrowser({ initialEntries }: LibraryBrowserProps) {
   };
 
   const updateVisibility = async (visibility: "PRIVATE" | "PUBLIC") => {
+    invariant(["PRIVATE", "PUBLIC"].includes(visibility), "visibility must be private or public.");
+
     if (!selectedEntry || selectedEntry.visibility === visibility) {
       return;
     }
 
     setUpdatingVisibility(true);
-    setVisibilityMessage("Updating visibility...");
+    setVisibilityMessage(
+      visibility === "PUBLIC" ? "Making public..." : "Making private..."
+    );
 
     try {
       const response = await fetch(`/api/entries/${selectedEntry.id}`, {
@@ -174,37 +308,35 @@ export function LibraryBrowser({ initialEntries }: LibraryBrowserProps) {
         body: JSON.stringify({ visibility }),
       });
 
-      const data = (await response.json()) as {
-        error?: string;
-        entry?: {
-          id: string;
-          visibility: "PRIVATE" | "PUBLIC";
-          status: "PUBLISHED";
-          updatedAt: string;
-          publishedAt: string;
-        };
-      };
+      const data = await readApiJson<
+        VisibilityResponse | ApiErrorResponse | LegacyErrorResponse
+      >(response);
+      const entry = getVisibilityEntry(data);
 
-      if (!response.ok || !data.entry) {
-        setVisibilityMessage(data.error ?? "Unable to update visibility.");
+      if (!response.ok || !entry) {
+        setVisibilityMessage(
+          getApiErrorMessage(data, "Unable to update visibility.")
+        );
         return;
       }
 
       setEntries((currentEntries) =>
-        currentEntries.map((entry) =>
-          entry.id === data.entry?.id
+        currentEntries.map((currentEntry) =>
+          currentEntry.id === entry.id
             ? {
-                ...entry,
-                visibility: data.entry.visibility,
-                status: data.entry.status,
-                updatedAt: data.entry.updatedAt,
-                publishedAt: data.entry.publishedAt,
+                ...currentEntry,
+                visibility: entry.visibility,
+                status: entry.status,
+                updatedAt: entry.updatedAt,
+                publishedAt: entry.publishedAt,
               }
-            : entry
+            : currentEntry
         )
       );
       setVisibilityMessage(
-        visibility === "PUBLIC" ? "Entry is public." : "Entry is private."
+        visibility === "PUBLIC"
+          ? "Entry has been made public."
+          : "Entry has been made private."
       );
     } catch {
       setVisibilityMessage("Unable to update visibility.");
@@ -296,7 +428,7 @@ export function LibraryBrowser({ initialEntries }: LibraryBrowserProps) {
                     <div className="mt-3 flex flex-wrap gap-3 text-xs font-semibold text-[var(--muted)]">
                       <span>{entry.wordCount} words</span>
                       <span>Updated {formatDate(entry.updatedAt)}</span>
-                      <span>{entry.status.toLowerCase()}</span>
+                      <span>{getDisplayStatus(entry.status)}</span>
                     </div>
                   </button>
                 </div>
@@ -367,7 +499,7 @@ export function LibraryBrowser({ initialEntries }: LibraryBrowserProps) {
                 <div className="mt-2 flex flex-wrap gap-3 text-sm font-semibold text-[var(--muted)]">
                   <span>{selectedEntry.wordCount} words</span>
                   <span>Updated {formatDate(selectedEntry.updatedAt)}</span>
-                  <span>Published {formatDate(selectedEntry.publishedAt)}</span>
+                  <span>Made public {formatDate(selectedEntry.publishedAt)}</span>
                 </div>
               </div>
               <Link
@@ -407,7 +539,19 @@ export function LibraryBrowser({ initialEntries }: LibraryBrowserProps) {
                 Public
               </button>
               {visibilityMessage ? (
-                <span className="text-sm font-semibold text-[var(--muted)]">
+                <span
+                  aria-live="polite"
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--muted)]"
+                >
+                  {updatingVisibility ? (
+                    <Spinner
+                      label={
+                        selectedEntry.visibility === "PUBLIC"
+                          ? "Making private"
+                          : "Making public"
+                      }
+                    />
+                  ) : null}
                   {visibilityMessage}
                 </span>
               ) : null}
