@@ -15,7 +15,13 @@ import {
 export type NavItem = {
   href: string;
   label: string;
-  icon: "home" | "library" | "explore" | "write" | "search" | "profile";
+  icon:
+    | "home"
+    | "library"
+    | "explore"
+    | "write"
+    | "search"
+    | "profile";
   match: "exact" | "prefix";
 };
 

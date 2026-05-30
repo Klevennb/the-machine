@@ -5,6 +5,7 @@ import { IS_UNDER_MAINTENANCE, MAINTENANCE_PATH } from "@/lib/maintenance";
 const isPublicRoute = createRouteMatcher([
   "/login(.*)",
   "/maintenance(.*)",
+  "/prompts(.*)",
   "/register(.*)",
   "/__clerk(.*)",
 ]);

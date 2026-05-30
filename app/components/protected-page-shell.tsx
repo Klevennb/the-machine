@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MessageCircle, PenLine } from "lucide-react";
 import { MobileNav, SidebarNav, type NavItem } from "@/app/components/app-nav";
 import { PageHeader } from "@/app/components/app-ui";
 import { SignOutButton } from "@/app/components/sign-out-button";
@@ -76,7 +77,7 @@ export async function ProtectedAppShell({
   ]);
 
   const contentClasses = [
-    "mx-auto w-full max-w-7xl px-5 pb-28 pt-8 md:px-10 md:py-10 lg:px-14",
+    "mx-auto w-full max-w-7xl px-5 pb-40 pt-8 md:px-10 md:py-10 lg:px-14",
     panelClassName,
   ]
     .filter(Boolean)
@@ -105,6 +106,22 @@ export async function ProtectedAppShell({
         </div>
         <SidebarNav items={navItems} />
         <div className="mt-auto space-y-4 border-t border-[var(--line)] px-7 pt-6">
+          <div className="space-y-2">
+            <Link
+              className="flex items-center gap-3 text-sm font-semibold text-[var(--charcoal)] hover:text-[var(--sage-dark)]"
+              href="/submit-prompt"
+            >
+              <PenLine className="size-4" />
+              Submit Prompt
+            </Link>
+            <Link
+              className="flex items-center gap-3 text-sm font-semibold text-[var(--charcoal)] hover:text-[var(--sage-dark)]"
+              href="/feedback"
+            >
+              <MessageCircle className="size-4" />
+              Feedback
+            </Link>
+          </div>
           <Link className="block text-sm font-semibold text-[var(--muted)]" href="/search">
             Requests
             {pendingRequestCount > 0 ? (
@@ -148,6 +165,22 @@ export async function ProtectedAppShell({
           ) : null}
         </div>
       </main>
+      <div className="fixed inset-x-0 bottom-[4.35rem] z-40 grid grid-cols-2 border-t border-[var(--line)] bg-white/95 text-sm font-bold shadow-[0_-10px_30px_-28px_rgba(45,45,45,0.5)] backdrop-blur md:hidden">
+        <Link
+          className="flex items-center justify-center gap-2 border-r border-[var(--line)] px-3 py-2.5 text-[var(--charcoal)]"
+          href="/submit-prompt"
+        >
+          <PenLine className="size-4" />
+          Submit Prompt
+        </Link>
+        <Link
+          className="flex items-center justify-center gap-2 px-3 py-2.5 text-[var(--charcoal)]"
+          href="/feedback"
+        >
+          <MessageCircle className="size-4" />
+          Feedback
+        </Link>
+      </div>
       <MobileNav items={navItems} />
     </div>
   );
