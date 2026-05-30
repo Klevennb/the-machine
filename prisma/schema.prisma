@@ -36,6 +36,27 @@ enum ProfileVisibility {
   PUBLIC
 }
 
+enum SubmissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  ARCHIVED
+}
+
+enum FeedbackCategory {
+  BUG
+  CONTENT_REQUEST
+  FEATURE_REQUEST
+  GENERAL
+}
+
+enum RewardStatus {
+  NOT_ELIGIBLE
+  ELIGIBLE
+  REWARDED
+  DISQUALIFIED
+}
+
 model User {
   id                 String                 @id @default(cuid())
   clerkId            String?                @unique
@@ -72,6 +93,10 @@ model User {
   customGoals        CustomGoal[]
   dailyProgress      DailyProgress[]
   promptAssignments  UserPromptAssignment[]
+  feedbackSubmissions FeedbackSubmission[]
+  writingPrompts     WritingPrompt[]
+  promptVotes        PromptVote[]
+  promptUsageEvents  PromptUsageEvent[]
   likes              EntryLike[]
   comments           EntryComment[]
   sentFriendRequests Friendship[]           @relation("FriendshipRequester")
@@ -168,6 +193,77 @@ model Prompt {
   promptedEntries Entry[]                @relation("PromptResponses")
 
   @@index([genre, isFeatured])
+}
+
+model FeedbackSubmission {
+  id                     String             @id @default(cuid())
+  userId                 String
+  category               FeedbackCategory
+  subject                String?
+  body                   String
+  attachmentUrl          String?
+  attachmentName         String?
+  attachmentMimeType     String?
+  attachmentSizeBytes    Int?
+  status                 SubmissionStatus   @default(PENDING)
+  adminNotes             String?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  user                   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+}
+
+model WritingPrompt {
+  id                String             @id @default(cuid())
+  authorId          String
+  title             String
+  body              String
+  genre             String
+  normalizedGenre   String
+  status            SubmissionStatus   @default(PENDING)
+  voteCount         Int                @default(0)
+  usageCount        Int                @default(0)
+  popularityScore   Int                @default(0)
+  rewardStatus      RewardStatus       @default(NOT_ELIGIBLE)
+  rewardedAt        DateTime?
+  adminNotes        String?
+  approvedAt        DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  author            User               @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  votes             PromptVote[]
+  usageEvents       PromptUsageEvent[]
+
+  @@index([status, normalizedGenre, popularityScore])
+  @@index([authorId, createdAt])
+  @@index([rewardStatus, popularityScore])
+}
+
+model PromptVote {
+  id        String        @id @default(cuid())
+  promptId  String
+  userId    String
+  createdAt DateTime      @default(now())
+  prompt    WritingPrompt @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([promptId, userId])
+  @@index([userId, createdAt])
+}
+
+model PromptUsageEvent {
+  id        String        @id @default(cuid())
+  promptId  String
+  userId    String
+  eventType String        @default("USE")
+  createdAt DateTime      @default(now())
+  prompt    WritingPrompt @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([promptId, createdAt])
+  @@index([userId, createdAt])
 }
 
 model UserPromptAssignment {
