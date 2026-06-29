@@ -7,7 +7,10 @@ import { getDailyAuthorAdvice, type AuthorAdvice } from "@/lib/author-advice";
 import { invariant } from "@/lib/invariant";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/session";
-import { getTodayWritingProgress } from "@/lib/writing-progress";
+import {
+  getActiveWritingStreaks,
+  getTodayWritingProgress,
+} from "@/lib/writing-progress";
 
 type RecentWork = {
   id: string;
@@ -527,24 +530,7 @@ export default async function Home() {
         updatedAt: true,
       },
     }),
-    prisma.wordGoal.findMany({
-      where: {
-        userId,
-        isActive: true,
-      },
-      orderBy: {
-        updatedAt: "desc",
-      },
-      take: 3,
-      select: {
-        id: true,
-        title: true,
-        dailyTargetWords: true,
-        streakGoalDays: true,
-        currentStreakDays: true,
-        bestStreakDays: true,
-      },
-    }),
+    getActiveWritingStreaks(prisma, userId, { take: 3 }),
     getTodayWritingProgress(prisma, userId),
     prisma.dailyProgress.findMany({
       where: {

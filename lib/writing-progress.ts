@@ -16,6 +16,15 @@ export type WritingProgressSnapshot = {
   bestStreakDays: number;
 };
 
+export type ActiveWritingStreak = {
+  id: string;
+  title: string;
+  dailyTargetWords: number;
+  streakGoalDays: number;
+  currentStreakDays: number;
+  bestStreakDays: number;
+};
+
 function getDatePartsInTimezone(date: Date, timezone: string) {
   invariant(date instanceof Date, "date must be a Date.");
   invariantString(timezone, "timezone");
@@ -189,6 +198,34 @@ async function recalculateStreak(
   invariant(today instanceof Date, "today must be a Date.");
   invariant(Number.isFinite(previousBestStreakDays), "previousBestStreakDays must be finite.");
 
+  const currentStreakDays = await calculateCurrentStreakDays(db, goalId, today);
+  const bestStreakDays = Math.max(previousBestStreakDays, currentStreakDays);
+
+  await db.wordGoal.update({
+    where: {
+      id: goalId,
+    },
+    data: {
+      currentStreakDays,
+      bestStreakDays,
+    },
+  });
+
+  return {
+    currentStreakDays,
+    bestStreakDays,
+  };
+}
+
+async function calculateCurrentStreakDays(
+  db: PrismaExecutor,
+  goalId: string,
+  today: Date
+) {
+  invariant(Boolean(db), "db is required.");
+  invariantString(goalId, "goalId");
+  invariant(today instanceof Date, "today must be a Date.");
+
   const progressDays = await db.dailyProgress.findMany({
     where: {
       goalId,
@@ -219,22 +256,7 @@ async function recalculateStreak(
     cursor = addDays(cursor, -1);
   }
 
-  const bestStreakDays = Math.max(previousBestStreakDays, currentStreakDays);
-
-  await db.wordGoal.update({
-    where: {
-      id: goalId,
-    },
-    data: {
-      currentStreakDays,
-      bestStreakDays,
-    },
-  });
-
-  return {
-    currentStreakDays,
-    bestStreakDays,
-  };
+  return currentStreakDays;
 }
 
 export async function syncActiveWordGoal(
@@ -279,7 +301,6 @@ export async function getTodayWritingProgress(
         select: {
           id: true,
           dailyTargetWords: true,
-          currentStreakDays: true,
           bestStreakDays: true,
         },
       },
@@ -307,6 +328,12 @@ export async function getTodayWritingProgress(
         },
       })
     : null;
+  const currentStreakDays = activeGoal
+    ? await calculateCurrentStreakDays(db, activeGoal.id, today)
+    : 0;
+  const bestStreakDays = activeGoal
+    ? Math.max(activeGoal.bestStreakDays, currentStreakDays)
+    : 0;
 
   return {
     date: formatProgressDate(today),
@@ -317,9 +344,72 @@ export async function getTodayWritingProgress(
       user.dailyTargetWords,
     goalMet: progress?.goalMet ?? false,
     creditedDelta: 0,
-    currentStreakDays: activeGoal?.currentStreakDays ?? 0,
-    bestStreakDays: activeGoal?.bestStreakDays ?? 0,
+    currentStreakDays,
+    bestStreakDays,
   };
+}
+
+export async function getActiveWritingStreaks(
+  db: PrismaExecutor,
+  userId: string,
+  options?: {
+    now?: Date;
+    take?: number;
+  }
+): Promise<ActiveWritingStreak[]> {
+  invariant(Boolean(db), "db is required.");
+  invariantString(userId, "userId");
+  invariant(options === undefined || typeof options === "object", "options must be an object when provided.");
+  invariant(options?.now === undefined || options.now instanceof Date, "now must be a Date when provided.");
+  invariant(options?.take === undefined || Number.isFinite(options.take), "take must be finite when provided.");
+
+  const user = await db.user.findUnique({
+    where: {
+      id: userId,
+    },
+    select: {
+      timezone: true,
+    },
+  });
+
+  if (!user) {
+    throw new Error("User not found.");
+  }
+
+  const today = getProgressDateForTimezone(user.timezone, options?.now);
+  const goals = await db.wordGoal.findMany({
+    where: {
+      userId,
+      isActive: true,
+    },
+    orderBy: {
+      updatedAt: "desc",
+    },
+    take: options?.take ?? 3,
+    select: {
+      id: true,
+      title: true,
+      dailyTargetWords: true,
+      streakGoalDays: true,
+      bestStreakDays: true,
+    },
+  });
+
+  return Promise.all(
+    goals.map(async (goal) => {
+      const currentStreakDays = await calculateCurrentStreakDays(
+        db,
+        goal.id,
+        today
+      );
+
+      return {
+        ...goal,
+        currentStreakDays,
+        bestStreakDays: Math.max(goal.bestStreakDays, currentStreakDays),
+      };
+    })
+  );
 }
 
 export async function creditEntryWritingProgress({
