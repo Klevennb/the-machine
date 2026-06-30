@@ -3,6 +3,7 @@ import { apiError, apiSuccess, createRequestId, logApiError } from "@/lib/api-re
 import { invariant, invariantString } from "@/lib/invariant";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/session";
+import { isStoryVisibility, type StoryVisibility } from "@/lib/stories";
 import { creditEntryWritingProgress } from "@/lib/writing-progress";
 
 export const runtime = "nodejs";
@@ -17,6 +18,8 @@ type SaveDraftPayload = {
   privateAuthorNote: string;
   publicAuthorNote: string;
   promptId: string | null;
+  visibility: StoryVisibility;
+  isNsfw: boolean;
 };
 
 function getSummary(plainText: string) {
@@ -128,6 +131,9 @@ function parseSaveDraftPayload(body: unknown) {
     record.publicAuthorNote,
     "publicAuthorNote"
   );
+  const visibility =
+    record.visibility === undefined ? "PRIVATE" : record.visibility;
+  const isNsfw = record.isNsfw === undefined ? false : record.isNsfw;
 
   if (entryId === undefined) {
     return { error: "Entry id must be a string when provided." } as const;
@@ -147,6 +153,14 @@ function parseSaveDraftPayload(body: unknown) {
 
   if (privateAuthorNote === null || publicAuthorNote === null) {
     return { error: "Author notes must be strings." } as const;
+  }
+
+  if (!isStoryVisibility(visibility)) {
+    return { error: "Choose private, friends, or public visibility." } as const;
+  }
+
+  if (typeof isNsfw !== "boolean") {
+    return { error: "NSFW must be true or false." } as const;
   }
 
   if (
@@ -178,6 +192,8 @@ function parseSaveDraftPayload(body: unknown) {
       privateAuthorNote,
       publicAuthorNote,
       promptId,
+      visibility,
+      isNsfw,
     } satisfies SaveDraftPayload,
   } as const;
 }
@@ -236,6 +252,8 @@ export async function GET() {
       wordCount: true,
       privateAuthorNote: true,
       publicAuthorNote: true,
+      visibility: true,
+      isNsfw: true,
       updatedAt: true,
     },
   });
@@ -293,6 +311,8 @@ export async function POST(request: Request) {
       promptId,
       publicAuthorNote,
       title,
+      visibility,
+      isNsfw,
       wordCount,
     } = parsed.payload;
     requestedEntryId = entryId;
@@ -306,6 +326,8 @@ export async function POST(request: Request) {
       privateAuthorNote: privateAuthorNote.trim() || null,
       publicAuthorNote: publicAuthorNote.trim() || null,
       promptId,
+      visibility,
+      isNsfw,
       isStandalone: true,
     };
 

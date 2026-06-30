@@ -13,6 +13,7 @@ type LibraryEntry = {
   privateAuthorNote: string | null;
   publicAuthorNote: string | null;
   visibility: "PRIVATE" | "FRIENDS" | "PUBLIC";
+  isNsfw: boolean;
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
   createdAt: string;
   updatedAt: string;
@@ -40,9 +41,10 @@ type LegacyErrorResponse = {
 type VisibilityResponse = {
   ok?: true;
   data?: {
-    entry?: {
-      id: string;
-      visibility: "PRIVATE" | "PUBLIC";
+      entry?: {
+        id: string;
+      visibility: "PRIVATE" | "FRIENDS" | "PUBLIC";
+      isNsfw: boolean;
       status: "PUBLISHED";
       updatedAt: string;
       publishedAt: string;
@@ -50,7 +52,8 @@ type VisibilityResponse = {
   };
   entry?: {
     id: string;
-    visibility: "PRIVATE" | "PUBLIC";
+    visibility: "PRIVATE" | "FRIENDS" | "PUBLIC";
+    isNsfw: boolean;
     status: "PUBLISHED";
     updatedAt: string;
     publishedAt: string;
@@ -287,17 +290,25 @@ export function LibraryBrowser({ initialEntries }: LibraryBrowserProps) {
     }
   };
 
-  const updateVisibility = async (visibility: "PRIVATE" | "PUBLIC") => {
-    invariant(["PRIVATE", "PUBLIC"].includes(visibility), "visibility must be private or public.");
+  const updateEntrySettings = async ({
+    isNsfw,
+    visibility,
+  }: {
+    isNsfw: boolean;
+    visibility: "PRIVATE" | "FRIENDS" | "PUBLIC";
+  }) => {
+    invariant(["PRIVATE", "FRIENDS", "PUBLIC"].includes(visibility), "visibility must be supported.");
+    invariant(typeof isNsfw === "boolean", "isNsfw must be boolean.");
 
-    if (!selectedEntry || selectedEntry.visibility === visibility) {
+    if (
+      !selectedEntry ||
+      (selectedEntry.visibility === visibility && selectedEntry.isNsfw === isNsfw)
+    ) {
       return;
     }
 
     setUpdatingVisibility(true);
-    setVisibilityMessage(
-      visibility === "PUBLIC" ? "Making public..." : "Making private..."
-    );
+    setVisibilityMessage("Updating story settings...");
 
     try {
       const response = await fetch(`/api/entries/${selectedEntry.id}`, {
@@ -305,7 +316,7 @@ export function LibraryBrowser({ initialEntries }: LibraryBrowserProps) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ visibility }),
+        body: JSON.stringify({ isNsfw, visibility }),
       });
 
       const data = await readApiJson<
@@ -326,6 +337,7 @@ export function LibraryBrowser({ initialEntries }: LibraryBrowserProps) {
             ? {
                 ...currentEntry,
                 visibility: entry.visibility,
+                isNsfw: entry.isNsfw,
                 status: entry.status,
                 updatedAt: entry.updatedAt,
                 publishedAt: entry.publishedAt,
@@ -334,15 +346,29 @@ export function LibraryBrowser({ initialEntries }: LibraryBrowserProps) {
         )
       );
       setVisibilityMessage(
-        visibility === "PUBLIC"
-          ? "Entry has been made public."
-          : "Entry has been made private."
+        "Story settings updated."
       );
     } catch {
       setVisibilityMessage("Unable to update visibility.");
     } finally {
       setUpdatingVisibility(false);
     }
+  };
+
+  const updateVisibility = async (
+    visibility: "PRIVATE" | "FRIENDS" | "PUBLIC"
+  ) => {
+    await updateEntrySettings({
+      isNsfw: selectedEntry?.isNsfw ?? false,
+      visibility,
+    });
+  };
+
+  const updateNsfw = async (isNsfw: boolean) => {
+    await updateEntrySettings({
+      isNsfw,
+      visibility: selectedEntry?.visibility ?? "PRIVATE",
+    });
   };
 
   if (entries.length === 0) {
@@ -421,6 +447,11 @@ export function LibraryBrowser({ initialEntries }: LibraryBrowserProps) {
                       <span className="shrink-0 rounded-full bg-[var(--paper-muted)] px-2.5 py-1 text-xs font-bold text-[var(--sage-dark)]">
                         {entry.visibility.toLowerCase()}
                       </span>
+                      {entry.isNsfw ? (
+                        <span className="shrink-0 rounded-full bg-[var(--sunset-soft)] px-2.5 py-1 text-xs font-bold text-[var(--sunset)]">
+                          NSFW
+                        </span>
+                      ) : null}
                     </div>
                     <p className="mt-2 line-clamp-2 text-sm leading-6 text-[var(--muted)]">
                       {getPreview(entry)}
@@ -528,6 +559,18 @@ export function LibraryBrowser({ initialEntries }: LibraryBrowserProps) {
               </button>
               <button
                 className={`rounded-full px-4 py-2 text-sm font-semibold ${
+                  selectedEntry.visibility === "FRIENDS"
+                    ? "bg-[var(--sage)] text-white"
+                    : "border border-[var(--line-strong)] bg-white text-[var(--sage-dark)] hover:bg-[var(--paper-soft)]"
+                } cursor-pointer disabled:cursor-not-allowed disabled:opacity-60`}
+                disabled={updatingVisibility}
+                onClick={() => updateVisibility("FRIENDS")}
+                type="button"
+              >
+                Friends
+              </button>
+              <button
+                className={`rounded-full px-4 py-2 text-sm font-semibold ${
                   selectedEntry.visibility === "PUBLIC"
                     ? "bg-[var(--sage)] text-white"
                     : "border border-[var(--line-strong)] bg-white text-[var(--sage-dark)] hover:bg-[var(--paper-soft)]"
@@ -538,6 +581,16 @@ export function LibraryBrowser({ initialEntries }: LibraryBrowserProps) {
               >
                 Public
               </button>
+              <label className="inline-flex items-center gap-2 rounded-full border border-[var(--line-strong)] bg-white px-4 py-2 text-sm font-semibold text-[var(--sage-dark)]">
+                <input
+                  checked={selectedEntry.isNsfw}
+                  className="size-4 accent-[var(--sage)]"
+                  disabled={updatingVisibility}
+                  onChange={(event) => updateNsfw(event.target.checked)}
+                  type="checkbox"
+                />
+                NSFW
+              </label>
               {visibilityMessage ? (
                 <span
                   aria-live="polite"
@@ -546,9 +599,7 @@ export function LibraryBrowser({ initialEntries }: LibraryBrowserProps) {
                   {updatingVisibility ? (
                     <Spinner
                       label={
-                        selectedEntry.visibility === "PUBLIC"
-                          ? "Making private"
-                          : "Making public"
+                        "Updating story settings"
                       }
                     />
                   ) : null}

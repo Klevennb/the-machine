@@ -99,6 +99,7 @@ model User {
   promptUsageEvents  PromptUsageEvent[]
   likes              EntryLike[]
   comments           EntryComment[]
+  hiddenEntries      HiddenEntry[]
   sentFriendRequests Friendship[]           @relation("FriendshipRequester")
   receivedFriends    Friendship[]           @relation("FriendshipAddressee")
 }
@@ -312,6 +313,7 @@ model Entry {
   visibility        EntryVisibility       @default(PRIVATE)
   commentPolicy     CommentPolicy         @default(ENABLED)
   status            EntryStatus           @default(DRAFT)
+  isNsfw            Boolean               @default(false)
   isStandalone      Boolean               @default(true)
   firstSubmittedAt  DateTime?
   publishedAt       DateTime?
@@ -323,11 +325,25 @@ model Entry {
   likes             EntryLike[]
   comments          EntryComment[]
   progressCredits   EntryProgressCredit[]
+  hiddenBy          HiddenEntry[]
 
   @@index([authorId, createdAt])
   @@index([seriesId, createdAt])
   @@index([visibility, status, publishedAt])
   @@index([promptId])
+}
+
+model HiddenEntry {
+  id       String   @id @default(cuid())
+  userId   String
+  entryId  String
+  hiddenAt DateTime @default(now())
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entry    Entry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, entryId])
+  @@index([userId, hiddenAt])
+  @@index([userId, entryId])
 }
 
 model EntryProgressCredit {

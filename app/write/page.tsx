@@ -39,6 +39,8 @@ export default async function WritePage({ searchParams }: WritePageProps) {
             wordCount: true,
             privateAuthorNote: true,
             publicAuthorNote: true,
+            visibility: true,
+            isNsfw: true,
             promptId: true,
             prompt: {
               select: {
@@ -73,6 +75,8 @@ export default async function WritePage({ searchParams }: WritePageProps) {
                 wordCount: draft.wordCount,
                 privateAuthorNote: draft.privateAuthorNote ?? "",
                 publicAuthorNote: draft.publicAuthorNote ?? "",
+                visibility: draft.visibility,
+                isNsfw: draft.isNsfw,
                 prompt: draft.prompt,
               }
             : null

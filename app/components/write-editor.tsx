@@ -140,6 +140,8 @@ type DraftEntry = {
   wordCount: number;
   privateAuthorNote: string;
   publicAuthorNote: string;
+  visibility: "PRIVATE" | "FRIENDS" | "PUBLIC";
+  isNsfw: boolean;
   prompt: WritingPrompt | null;
 };
 
@@ -703,6 +705,10 @@ export function WriteEditor({
   const [publicAuthorNote, setPublicAuthorNote] = useState(
     initialDraft?.publicAuthorNote ?? ""
   );
+  const [visibility, setVisibility] = useState<"PRIVATE" | "FRIENDS" | "PUBLIC">(
+    initialDraft?.visibility ?? "PRIVATE"
+  );
+  const [isNsfw, setIsNsfw] = useState(initialDraft?.isNsfw ?? false);
   const [isPrivateNoteOpen, setIsPrivateNoteOpen] = useState(() =>
     Boolean(initialDraft?.privateAuthorNote.trim())
   );
@@ -811,6 +817,8 @@ export function WriteEditor({
           wordCount,
           privateAuthorNote,
           publicAuthorNote,
+          visibility,
+          isNsfw,
           promptId: selectedPrompt?.id ?? null,
         }),
       });
@@ -981,6 +989,49 @@ export function WriteEditor({
                 </label>
               ) : null}
             </div>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+            <label className="block">
+              <span className="mb-2 block text-sm font-bold text-[var(--charcoal)]">
+                Visibility
+              </span>
+              <select
+                className="app-field w-full px-4 py-3"
+                onChange={(event) => {
+                  setVisibility(
+                    event.target.value as "PRIVATE" | "FRIENDS" | "PUBLIC"
+                  );
+                  setSaveMessage((current) =>
+                    current.startsWith("Published")
+                      ? "Entry has unpublished changes."
+                      : current
+                  );
+                }}
+                value={visibility}
+              >
+                <option value="PRIVATE">Private</option>
+                <option value="FRIENDS">Friends</option>
+                <option value="PUBLIC">Public</option>
+              </select>
+            </label>
+
+            <label className="flex min-h-12 items-center gap-3 rounded-2xl border border-[var(--line)] bg-[var(--paper-soft)] px-4 py-3 text-sm font-bold text-[var(--charcoal)]">
+              <input
+                checked={isNsfw}
+                className="size-4 accent-[var(--sage)]"
+                onChange={(event) => {
+                  setIsNsfw(event.target.checked);
+                  setSaveMessage((current) =>
+                    current.startsWith("Published")
+                      ? "Entry has unpublished changes."
+                      : current
+                  );
+                }}
+                type="checkbox"
+              />
+              NSFW
+            </label>
           </div>
         </div>
         <ToolbarPlugin />
