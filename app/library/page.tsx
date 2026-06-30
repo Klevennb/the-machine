@@ -27,6 +27,7 @@ export default async function LibraryPage() {
       privateAuthorNote: true,
       publicAuthorNote: true,
       visibility: true,
+      isNsfw: true,
       status: true,
       createdAt: true,
       updatedAt: true,

@@ -55,6 +55,7 @@ function toMarkdown(entry: ExportEntry) {
   const metadata = [
     ["Status", entry.status],
     ["Visibility", entry.visibility],
+    ["NSFW", entry.isNsfw ? "Yes" : "No"],
     ["Words", entry.wordCount.toLocaleString()],
     ["Created", entry.createdAt.toISOString()],
     ["Updated", entry.updatedAt.toISOString()],
@@ -124,6 +125,7 @@ async function getEntriesForExport({
       privateAuthorNote: true,
       publicAuthorNote: true,
       visibility: true,
+      isNsfw: true,
       commentPolicy: true,
       status: true,
       isStandalone: true,
@@ -207,6 +209,7 @@ export async function POST(request: Request) {
           title: entry.title,
           status: entry.status,
           visibility: entry.visibility,
+          isNsfw: entry.isNsfw,
           wordCount: entry.wordCount,
           createdAt: entry.createdAt.toISOString(),
           updatedAt: entry.updatedAt.toISOString(),

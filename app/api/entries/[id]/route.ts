@@ -2,12 +2,14 @@ import { apiError, apiSuccess, createRequestId, logApiError } from "@/lib/api-re
 import { invariant, invariantString } from "@/lib/invariant";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/session";
+import { isStoryVisibility, type StoryVisibility } from "@/lib/stories";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type EntryVisibilityPayload = {
-  visibility?: "PRIVATE" | "PUBLIC";
+  visibility?: StoryVisibility;
+  isNsfw?: boolean;
 };
 
 type EntryRouteContext = {
@@ -33,11 +35,17 @@ function parseVisibilityPayload(body: unknown) {
 
   const visibility = (body as EntryVisibilityPayload).visibility;
 
-  if (visibility !== "PRIVATE" && visibility !== "PUBLIC") {
-    return { error: "Choose private or public visibility." } as const;
+  if (!isStoryVisibility(visibility)) {
+    return { error: "Choose private, friends, or public visibility." } as const;
   }
 
-  return { visibility } as const;
+  const isNsfw = (body as EntryVisibilityPayload).isNsfw;
+
+  if (isNsfw !== undefined && typeof isNsfw !== "boolean") {
+    return { error: "NSFW must be true or false." } as const;
+  }
+
+  return { isNsfw, visibility } as const;
 }
 
 export async function PATCH(request: Request, context: EntryRouteContext) {
@@ -89,7 +97,7 @@ export async function PATCH(request: Request, context: EntryRouteContext) {
     if ("error" in parsed) {
       return apiError({
         code: "INVALID_VISIBILITY",
-        message: parsed.error ?? "Choose private or public visibility.",
+        message: parsed.error ?? "Choose private, friends, or public visibility.",
         requestId,
         status: 400,
       });
@@ -121,12 +129,14 @@ export async function PATCH(request: Request, context: EntryRouteContext) {
       },
       data: {
         visibility: parsed.visibility,
+        ...(parsed.isNsfw === undefined ? {} : { isNsfw: parsed.isNsfw }),
         status: "PUBLISHED",
         publishedAt: existingEntry.publishedAt ?? new Date(),
       },
       select: {
         id: true,
         visibility: true,
+        isNsfw: true,
         status: true,
         updatedAt: true,
         publishedAt: true,

@@ -1,10 +1,12 @@
 import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
 import { StreakChip, SurfaceCard } from "@/app/components/app-ui";
 import { ProfileFriendButton } from "@/app/components/profile-friend-button";
 import { ProtectedPageShell } from "@/app/components/protected-page-shell";
 import { invariant } from "@/lib/invariant";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/session";
+import { getProfileStoryVisibilityFilter } from "@/lib/stories";
 
 type UserProfilePageProps = {
   params: Promise<{ id: string }>;
@@ -76,6 +78,12 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
         },
       });
 
+  const visibleStoryFilter = await getProfileStoryVisibilityFilter({
+    db: prisma,
+    profileUserId,
+    viewerId,
+  });
+
   const user = await prisma.user.findUnique({
     where: {
       id: profileUserId,
@@ -93,7 +101,7 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
       entries: {
         where: {
           status: "PUBLISHED",
-          visibility: "PUBLIC",
+          visibility: visibleStoryFilter,
         },
         orderBy: {
           publishedAt: "desc",
@@ -105,6 +113,7 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
           plainText: true,
           wordCount: true,
           visibility: true,
+          isNsfw: true,
           publishedAt: true,
         },
       },
@@ -229,7 +238,7 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
 
         <section className="min-w-0">
           <h2 className="font-literary text-3xl font-semibold text-[var(--charcoal)]">
-            Public Stories
+            Visible Stories
           </h2>
           <div className="mt-4 space-y-4">
             {user.entries.length === 0 ? (
@@ -245,13 +254,17 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h3 className="break-words font-literary text-2xl font-semibold text-[var(--charcoal)]">
+                    <Link
+                      className="break-words font-literary text-2xl font-semibold text-[var(--charcoal)] hover:text-[var(--sage-dark)]"
+                      href={`/stories/${entry.id}`}
+                    >
                       {entry.title?.trim() || "Untitled Entry"}
-                    </h3>
+                    </Link>
                     <div className="mt-2 flex flex-wrap gap-3 text-xs font-semibold text-[var(--muted)]">
                       <span>{entry.wordCount} words</span>
                       <span>Made public {formatDate(entry.publishedAt)}</span>
                       <span>{entry.visibility.toLowerCase()}</span>
+                      {entry.isNsfw ? <span>NSFW</span> : null}
                     </div>
                   </div>
                 </div>
