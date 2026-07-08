@@ -113,6 +113,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser to see the a
 
 - `app/` - Next.js App Router pages and API routes
 - `app/components/` - React components
+- `docs/` - Product and domain behavior documentation
 - `lib/` - Utility functions and helpers
 - `prisma/` - Database schema and migrations
 - `public/` - Static assets
@@ -120,4 +121,5 @@ Open [http://localhost:3000](http://localhost:3000) in your browser to see the a
 ## Notes
 
 - This project uses the latest Next.js 16 with breaking changes. See `AGENTS.md` for important information.
+- Daily prompt contest behavior is specified in `docs/daily-prompt-contest.md`.
 - Database migrations are automatically applied on build via the postinstall hook.
