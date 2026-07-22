@@ -57,6 +57,23 @@ enum RewardStatus {
   DISQUALIFIED
 }
 
+enum ContestPromptSource {
+  BUILT_IN
+  COMMUNITY
+}
+
+enum ContestQueueStatus {
+  QUEUED
+  USED
+  CANCELLED
+}
+
+enum ContestEntryStatus {
+  ACTIVE
+  WITHDRAWN
+  DISQUALIFIED
+}
+
 model User {
   id                 String                 @id @default(cuid())
   clerkId            String?                @unique
@@ -71,6 +88,8 @@ model User {
   profileVisibility  ProfileVisibility      @default(PUBLIC)
   showEmailOnProfile Boolean                @default(false)
   allowNsfwStories   Boolean                @default(false)
+  showNsfwContestEntries Boolean            @default(false)
+  hideDailyContestCard Boolean              @default(false)
   favoriteGenres     String[]               @default([])
   mutedGenres        String[]               @default([])
   feedIncludesPublic Boolean                @default(true)
@@ -100,6 +119,9 @@ model User {
   likes              EntryLike[]
   comments           EntryComment[]
   hiddenEntries      HiddenEntry[]
+  contestQueueItems  ContestPromptQueueItem[] @relation("ContestQueueCreator")
+  contestEntries     ContestEntry[]
+  contestVotes       ContestVote[]
   sentFriendRequests Friendship[]           @relation("FriendshipRequester")
   receivedFriends    Friendship[]           @relation("FriendshipAddressee")
 }
@@ -192,6 +214,7 @@ model Prompt {
   updatedAt       DateTime               @updatedAt
   assignments     UserPromptAssignment[]
   promptedEntries Entry[]                @relation("PromptResponses")
+  contestQueueItems ContestPromptQueueItem[]
 
   @@index([genre, isFeatured])
 }
@@ -236,6 +259,7 @@ model WritingPrompt {
   author            User               @relation(fields: [authorId], references: [id], onDelete: Cascade)
   votes             PromptVote[]
   usageEvents       PromptUsageEvent[]
+  contestQueueItems ContestPromptQueueItem[]
 
   @@index([status, normalizedGenre, popularityScore])
   @@index([authorId, createdAt])
@@ -326,11 +350,89 @@ model Entry {
   comments          EntryComment[]
   progressCredits   EntryProgressCredit[]
   hiddenBy          HiddenEntry[]
+  contestEntry      ContestEntry?
 
   @@index([authorId, createdAt])
   @@index([seriesId, createdAt])
   @@index([visibility, status, publishedAt])
   @@index([promptId])
+}
+
+model DailyContest {
+  id                  String              @id @default(cuid())
+  contestDate         DateTime            @unique @db.Date
+  promptTitle         String
+  promptBody          String
+  promptGenre         String
+  promptSource        ContestPromptSource
+  sourcePromptId      String
+  submissionsOpenAt   DateTime
+  submissionsCloseAt  DateTime
+  votingCloseAt       DateTime
+  winnerEntryId       String?             @unique
+  finalizedAt         DateTime?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  entries             ContestEntry[]      @relation("ContestEntries")
+  winnerEntry         ContestEntry?       @relation("ContestWinner", fields: [winnerEntryId], references: [id], onDelete: SetNull)
+  votes               ContestVote[]
+
+  @@index([votingCloseAt, finalizedAt])
+}
+
+model ContestPromptQueueItem {
+  id              String              @id @default(cuid())
+  builtInPromptId String?
+  writingPromptId String?
+  scheduledDate   DateTime?           @db.Date
+  position        Int
+  status          ContestQueueStatus  @default(QUEUED)
+  createdById     String
+  usedAt          DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  builtInPrompt   Prompt?             @relation(fields: [builtInPromptId], references: [id], onDelete: Cascade)
+  writingPrompt   WritingPrompt?      @relation(fields: [writingPromptId], references: [id], onDelete: Cascade)
+  createdBy       User                @relation("ContestQueueCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([status, scheduledDate, position])
+}
+
+model ContestEntry {
+  id                 String              @id @default(cuid())
+  contestId          String
+  entryId            String              @unique
+  authorId           String
+  status             ContestEntryStatus  @default(ACTIVE)
+  submittedAt        DateTime            @default(now())
+  withdrawnAt        DateTime?
+  disqualifiedAt     DateTime?
+  disqualifiedById   String?
+  adminNotes         String?
+  voteCount          Int                 @default(0)
+  contest            DailyContest        @relation("ContestEntries", fields: [contestId], references: [id], onDelete: Cascade)
+  winnerOf           DailyContest?       @relation("ContestWinner")
+  entry              Entry               @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  author             User                @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  votes              ContestVote[]
+
+  @@unique([contestId, authorId])
+  @@index([contestId, status, voteCount, submittedAt])
+}
+
+model ContestVote {
+  id              String        @id @default(cuid())
+  contestId       String
+  contestEntryId  String
+  userId          String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  contest         DailyContest  @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  contestEntry    ContestEntry  @relation(fields: [contestEntryId], references: [id], onDelete: Cascade)
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([contestId, userId])
+  @@index([contestEntryId])
 }
 
 model HiddenEntry {

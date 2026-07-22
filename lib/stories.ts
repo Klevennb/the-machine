@@ -222,6 +222,7 @@ export async function getExploreStories({
       visibility: true,
       isNsfw: true,
       publishedAt: true,
+      contestEntry: { select: { status: true, contest: { select: { contestDate: true } } } },
       author: {
         select: {
           id: true,

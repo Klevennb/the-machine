@@ -115,6 +115,7 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
           visibility: true,
           isNsfw: true,
           publishedAt: true,
+          contestEntry: { select: { status: true, contest: { select: { contestDate: true } } } },
         },
       },
     },
@@ -265,6 +266,7 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
                       <span>Made public {formatDate(entry.publishedAt)}</span>
                       <span>{entry.visibility.toLowerCase()}</span>
                       {entry.isNsfw ? <span>NSFW</span> : null}
+                      {entry.contestEntry?.status === "ACTIVE" ? <Link className="font-bold text-[var(--sunset)]" href={`/contest/${entry.contestEntry.contest.contestDate.toISOString().slice(0, 10)}`}>Daily contest</Link> : null}
                     </div>
                   </div>
                 </div>

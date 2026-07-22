@@ -32,6 +32,7 @@ export default async function LibraryPage() {
       createdAt: true,
       updatedAt: true,
       publishedAt: true,
+      contestEntry: { select: { id: true, status: true, contest: { select: { contestDate: true } } } },
     },
   });
 
@@ -48,6 +49,7 @@ export default async function LibraryPage() {
           createdAt: entry.createdAt.toISOString(),
           updatedAt: entry.updatedAt.toISOString(),
           publishedAt: entry.publishedAt?.toISOString() ?? null,
+          contestEntry: entry.contestEntry ? { ...entry.contestEntry, contestDate: entry.contestEntry.contest.contestDate.toISOString().slice(0, 10) } : null,
         }))}
       />
     </ProtectedPageShell>

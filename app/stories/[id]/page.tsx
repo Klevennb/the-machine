@@ -56,6 +56,7 @@ export default async function StoryPage({ params }: StoryPageProps) {
       status: true,
       isNsfw: true,
       publishedAt: true,
+      contestEntry: { select: { status: true, contest: { select: { contestDate: true } } } },
       author: {
         select: {
           id: true,
@@ -102,6 +103,7 @@ export default async function StoryPage({ params }: StoryPageProps) {
             <span>{formatDate(entry.publishedAt)}</span>
             <StreakChip tone="sage">{entry.visibility.toLowerCase()}</StreakChip>
             {entry.isNsfw ? <StreakChip>NSFW</StreakChip> : null}
+            {entry.contestEntry?.status === "ACTIVE" ? <Link className="font-bold text-[var(--sunset)]" href={`/contest/${entry.contestEntry.contest.contestDate.toISOString().slice(0, 10)}`}>Daily contest entry</Link> : null}
           </div>
 
           {entry.publicAuthorNote ? (

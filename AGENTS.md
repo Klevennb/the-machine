@@ -68,3 +68,19 @@ If a requested change would require large-scale refactoring or violate these gui
 - Explain the trade-offs.
 - Propose a smaller incremental approach.
 - Do not rewrite large portions of working code without explicit approval.
+
+## Deep Module Design Rule
+
+Prefer deep modules with shallow interfaces, following John Ousterhout's *A Philosophy of Software Design*.
+
+When introducing or changing a module:
+
+- Keep its public interface substantially simpler than the behavior it encapsulates.
+- Hide domain rules, state transitions, data representation, and third-party details behind that interface.
+- Prefer a few cohesive operations over many narrowly exposed methods that force callers to orchestrate internals.
+- Avoid pass-through methods, shallow wrappers, and layers that merely rename another interface without hiding complexity.
+- Keep errors that can be handled internally out of the public contract; expose typed outcomes when callers must decide what happens next.
+- Design the interface around the common use case and make the module itself absorb edge-case complexity.
+- Test behavior through the public interface so internal structure can change without cascading test rewrites.
+
+Before adding a new abstraction, explain what complexity it hides. If the interface is not simpler than the implementation it exposes, deepen the module or remove the abstraction.

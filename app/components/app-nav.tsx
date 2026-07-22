@@ -9,6 +9,7 @@ import {
   Library,
   PenLine,
   Search,
+  Trophy,
   type LucideIcon,
 } from "lucide-react";
 
@@ -21,7 +22,8 @@ export type NavItem = {
     | "explore"
     | "write"
     | "search"
-    | "profile";
+    | "profile"
+    | "contest";
   match: "exact" | "prefix";
 };
 
@@ -32,6 +34,7 @@ const navIcons: Record<NavItem["icon"], LucideIcon> = {
   write: PenLine,
   search: Search,
   profile: CircleUserRound,
+  contest: Trophy,
 };
 
 function isActive(pathname: string, item: NavItem) {

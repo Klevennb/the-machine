@@ -3,7 +3,9 @@ import Link from "next/link";
 import { MobileDisclosure } from "@/app/components/mobile-disclosure";
 import { PrimaryButton, ProgressRing, StreakChip, SurfaceCard } from "@/app/components/app-ui";
 import { ProtectedPageShell } from "@/app/components/protected-page-shell";
+import { toggleDailyContestCard } from "@/app/contest/actions";
 import { getDailyAuthorAdvice, type AuthorAdvice } from "@/lib/author-advice";
+import { getOrCreateContest } from "@/lib/daily-contest";
 import { invariant } from "@/lib/invariant";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/session";
@@ -504,12 +506,16 @@ export default async function Home() {
       username: true,
       email: true,
       createdAt: true,
+      hideDailyContestCard: true,
     },
   });
 
   if (!currentUser) {
     redirect("/login");
   }
+
+  const dailyContest = await getOrCreateContest(prisma);
+  const openContestCount = await prisma.dailyContest.count({ where: { votingCloseAt: { gt: new Date() } } });
 
   const [recentWorks, writingStreaks, todayProgress, activityDays] =
     await Promise.all([
@@ -570,6 +576,9 @@ export default async function Home() {
     >
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="space-y-6">
+          {dailyContest ? <SurfaceCard className="p-6">
+            {currentUser.hideDailyContestCard ? <div className="flex flex-wrap items-center justify-between gap-3"><div><strong>{dailyContest.promptTitle}</strong><p className="text-sm text-[var(--muted)]">{openContestCount} contest{openContestCount === 1 ? "" : "s"} still open for voting</p></div><form action={toggleDailyContestCard}><input type="hidden" name="hidden" value="false"/><button className="app-button-secondary px-4 py-2">Restore</button></form></div> : <div><div className="flex flex-wrap justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-widest text-[var(--sunset)]">Today&apos;s contest</p><h2 className="mt-2 font-literary text-3xl font-bold">{dailyContest.promptTitle}</h2></div><form action={toggleDailyContestCard}><input type="hidden" name="hidden" value="true"/><button className="app-button-secondary px-4 py-2">Minimize</button></form></div><p className="mt-3 max-w-3xl leading-7">{dailyContest.promptBody}</p><Link className="app-button-primary mt-5 inline-flex px-5 py-2.5" href="/contest">View daily contest</Link>{openContestCount > 1 ? <p className="mt-3 text-sm font-semibold text-[var(--muted)]">{openContestCount - 1} prior contest{openContestCount === 2 ? " is" : "s are"} still open for voting.</p> : null}</div>}
+          </SurfaceCard> : null}
           <MobileHomeDrawer
             displayHandle={getDisplayHandle(currentUser)}
             recentWorks={recentWorks}

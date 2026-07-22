@@ -340,6 +340,7 @@ export async function POST(request: Request) {
         select: {
           id: true,
           wordCount: true,
+          contestEntry: { select: { status: true } },
         },
       });
 
@@ -349,6 +350,15 @@ export async function POST(request: Request) {
           message: "Entry not found",
           requestId,
           status: 404,
+        });
+      }
+
+      if (existingDraft.contestEntry?.status === "ACTIVE") {
+        return apiError({
+          code: "CONTEST_ENTRY_LOCKED",
+          message: "Contest entries cannot be edited after submission.",
+          requestId,
+          status: 409,
         });
       }
 

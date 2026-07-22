@@ -81,6 +81,7 @@ export async function GET(request: Request) {
           visibility: story.visibility,
           isNsfw: story.isNsfw,
           publishedAt: story.publishedAt?.toISOString() ?? null,
+          contestDate: story.contestEntry?.status === "ACTIVE" ? story.contestEntry.contest.contestDate.toISOString().slice(0, 10) : null,
           author: {
             id: story.author.id,
             name: getDisplayName(story.author),

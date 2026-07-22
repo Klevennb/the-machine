@@ -149,6 +149,7 @@ type WriteEditorProps = {
   initialDraft: DraftEntry | null;
   initialProgress: WritingProgress;
   showPromptPicker: boolean;
+  dailyContest: { id: string; promptTitle: string; promptBody: string; promptGenre: string } | null;
 };
 
 type WritingPrompt = {
@@ -693,6 +694,7 @@ export function WriteEditor({
   initialDraft,
   initialProgress,
   showPromptPicker,
+  dailyContest,
 }: WriteEditorProps) {
   invariant(Boolean(initialProgress), "initialProgress is required.");
   invariant(typeof showPromptPicker === "boolean", "showPromptPicker must be boolean.");
@@ -721,7 +723,7 @@ export function WriteEditor({
     normalizeInitialContent(initialDraft?.content)
   );
   const [selectedPrompt, setSelectedPrompt] = useState<WritingPrompt | null>(
-    initialDraft?.prompt ?? null
+    initialDraft?.prompt ?? (dailyContest ? { id: `contest:${dailyContest.id}`, title: dailyContest.promptTitle, body: dailyContest.promptBody, genre: dailyContest.promptGenre, tags: [] } : null)
   );
   const [promptGenre, setPromptGenre] = useState(GENRES[0]);
   const [seenPromptIds, setSeenPromptIds] = useState<string[]>(
@@ -794,7 +796,7 @@ export function WriteEditor({
     }
   };
 
-  const publishEntry = async () => {
+  const publishEntry = async (): Promise<string | null> => {
     invariant(typeof entryId === "string" || entryId === null, "entryId must be a string or null.");
     invariantString(title, "title");
     invariantString(plainText, "plainText");
@@ -819,7 +821,7 @@ export function WriteEditor({
           publicAuthorNote,
           visibility,
           isNsfw,
-          promptId: selectedPrompt?.id ?? null,
+          promptId: dailyContest ? null : selectedPrompt?.id ?? null,
         }),
       });
 
@@ -833,7 +835,7 @@ export function WriteEditor({
         setSaveMessage(
           getApiErrorMessage(data, "Unable to publish entry.")
         );
-        return;
+        return null;
       }
 
       setEntryId(draft.id);
@@ -841,11 +843,27 @@ export function WriteEditor({
         setDailyProgress(progress);
       }
       setSaveMessage(getPublishedSuccessMessage(draft.updatedAt));
+      return draft.id;
     } catch {
       setSaveMessage("Unable to publish entry. Check your connection and try again.");
+      return null;
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const submitToContest = async () => {
+    if (!dailyContest || !window.confirm("Contest entries are public and cannot be edited after submission.")) return;
+    const savedEntryId = await publishEntry();
+    if (!savedEntryId) return;
+    setIsSaving(true);
+    setSaveMessage("Submitting entry to contest...");
+    try {
+      const response = await fetch("/api/contest/entries", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contestId: dailyContest.id, entryId: savedEntryId }) });
+      const data = await readApiJson<ApiErrorResponse | { ok: true }>(response);
+      if (!response.ok) { setSaveMessage(getApiErrorMessage(data, "Unable to submit contest entry.")); return; }
+      window.location.href = "/contest";
+    } catch { setSaveMessage("Unable to submit contest entry."); } finally { setIsSaving(false); }
   };
 
   return (
@@ -1073,7 +1091,7 @@ export function WriteEditor({
           <button
             className="app-button-primary inline-flex items-center gap-2 px-5 py-2.5 text-sm disabled:cursor-not-allowed disabled:bg-[var(--muted)]"
             disabled={isSaving}
-            onClick={publishEntry}
+            onClick={() => void publishEntry()}
             type="button"
           >
             {isSaving ? (
@@ -1082,9 +1100,10 @@ export function WriteEditor({
                 Publishing...
               </>
             ) : (
-              "Publish Entry"
+              dailyContest ? "Save privately" : "Publish Entry"
             )}
           </button>
+          {dailyContest ? <button className="app-button-primary inline-flex px-5 py-2.5 text-sm disabled:opacity-60" disabled={isSaving || wordCount < 100} onClick={submitToContest} type="button">Submit entry to contest</button> : null}
         </div>
         <StatusBarPlugin />
         </div>

@@ -18,6 +18,7 @@ type LibraryEntry = {
   createdAt: string;
   updatedAt: string;
   publishedAt: string | null;
+  contestEntry: { id: string; status: "ACTIVE" | "WITHDRAWN" | "DISQUALIFIED"; contestDate: string } | null;
 };
 
 type LibraryBrowserProps = {
@@ -452,6 +453,7 @@ export function LibraryBrowser({ initialEntries }: LibraryBrowserProps) {
                           NSFW
                         </span>
                       ) : null}
+                      {entry.contestEntry?.status === "ACTIVE" ? <span className="shrink-0 rounded-full bg-[var(--sage-soft)] px-2.5 py-1 text-xs font-bold text-[var(--sage-dark)]">Contest · locked</span> : null}
                     </div>
                     <p className="mt-2 line-clamp-2 text-sm leading-6 text-[var(--muted)]">
                       {getPreview(entry)}
@@ -533,15 +535,15 @@ export function LibraryBrowser({ initialEntries }: LibraryBrowserProps) {
                   <span>Made public {formatDate(selectedEntry.publishedAt)}</span>
                 </div>
               </div>
-              <Link
+              {selectedEntry.contestEntry?.status === "ACTIVE" ? <Link className="app-button-secondary shrink-0 px-5 py-2.5 text-sm" href={`/contest/${selectedEntry.contestEntry.contestDate}`}>View contest</Link> : <Link
                 className="app-button-primary shrink-0 px-5 py-2.5 text-sm"
                 href={`/write?entryId=${selectedEntry.id}`}
               >
                 Edit Entry
-              </Link>
+              </Link>}
             </div>
 
-            <div className="mt-5 flex flex-wrap items-center gap-3 rounded-2xl bg-[var(--paper-soft)] p-4">
+            {selectedEntry.contestEntry?.status !== "ACTIVE" ? <div className="mt-5 flex flex-wrap items-center gap-3 rounded-2xl bg-[var(--paper-soft)] p-4">
               <span className="text-sm font-bold text-[var(--charcoal)]">
                 Visibility
               </span>
@@ -606,7 +608,7 @@ export function LibraryBrowser({ initialEntries }: LibraryBrowserProps) {
                   {visibilityMessage}
                 </span>
               ) : null}
-            </div>
+            </div> : <p className="mt-5 rounded-2xl bg-[var(--paper-soft)] p-4 text-sm font-semibold">This contest entry is public and locked against editing.</p>}
 
             <article className="mt-5 max-h-[560px] overflow-auto whitespace-pre-wrap rounded-2xl bg-[var(--paper-soft)] p-6 font-literary text-lg leading-9 text-[var(--charcoal)]">
               {selectedEntry.plainText?.trim() || "No content yet."}

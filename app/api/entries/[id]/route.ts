@@ -111,6 +111,7 @@ export async function PATCH(request: Request, context: EntryRouteContext) {
       select: {
         id: true,
         publishedAt: true,
+        contestEntry: { select: { status: true } },
       },
     });
 
@@ -121,6 +122,10 @@ export async function PATCH(request: Request, context: EntryRouteContext) {
         requestId,
         status: 404,
       });
+    }
+
+    if (existingEntry.contestEntry?.status === "ACTIVE") {
+      return apiError({ code: "CONTEST_ENTRY_LOCKED", message: "Contest entries cannot be edited after submission.", requestId, status: 409 });
     }
 
     const entry = await prisma.entry.update({

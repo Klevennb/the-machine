@@ -37,6 +37,7 @@ const navItems: NavItem[] = [
   { href: "/", label: "Hub", icon: "home", match: "exact" },
   { href: "/library", label: "Library", icon: "library", match: "prefix" },
   { href: "/explore", label: "Explore", icon: "explore", match: "prefix" },
+  { href: "/contest", label: "Contest", icon: "contest", match: "prefix" },
   { href: "/write", label: "Write", icon: "write", match: "prefix" },
   { href: "/search", label: "Search", icon: "search", match: "prefix" },
   { href: "/profile", label: "Profile", icon: "profile", match: "prefix" },

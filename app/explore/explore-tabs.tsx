@@ -21,6 +21,7 @@ type Story = {
   visibility: "PRIVATE" | "FRIENDS" | "PUBLIC";
   isNsfw: boolean;
   publishedAt: string | null;
+  contestDate: string | null;
   author: {
     id: string;
     name: string;
@@ -279,6 +280,7 @@ function StoriesTab({ initialAllowNsfw }: { initialAllowNsfw: boolean }) {
                   <StreakChip tone="sage">{story.visibility.toLowerCase()}</StreakChip>
                 ) : null}
                 {story.isNsfw ? <StreakChip>NSFW</StreakChip> : null}
+                {story.contestDate ? <Link href={`/contest/${story.contestDate}`}><StreakChip tone="sage">Daily contest</StreakChip></Link> : null}
               </div>
               <h3 className="mt-4 break-words font-literary text-2xl font-semibold text-[var(--charcoal)]">
                 {story.title}

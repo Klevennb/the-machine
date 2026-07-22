@@ -7,7 +7,7 @@ import { getCurrentUserId } from "@/lib/session";
 import { getTodayWritingProgress } from "@/lib/writing-progress";
 
 type WritePageProps = {
-  searchParams: Promise<{ entryId?: string | string[] }>;
+  searchParams: Promise<{ entryId?: string | string[]; contestId?: string | string[] }>;
 };
 
 export default async function WritePage({ searchParams }: WritePageProps) {
@@ -23,8 +23,9 @@ export default async function WritePage({ searchParams }: WritePageProps) {
   const requestedEntryId = Array.isArray(params.entryId)
     ? params.entryId[0]
     : params.entryId;
+  const requestedContestId = Array.isArray(params.contestId) ? params.contestId[0] : params.contestId;
 
-  const [draft, todayProgress] = await Promise.all([
+  const [draft, todayProgress, dailyContest] = await Promise.all([
     requestedEntryId
       ? prisma.entry.findFirst({
           where: {
@@ -55,6 +56,7 @@ export default async function WritePage({ searchParams }: WritePageProps) {
         })
       : null,
     getTodayWritingProgress(prisma, userId),
+    requestedContestId ? prisma.dailyContest.findFirst({ where: { id: requestedContestId, submissionsCloseAt: { gt: new Date() } }, select: { id: true, promptTitle: true, promptBody: true, promptGenre: true } }) : null,
   ]);
 
   return (
@@ -83,6 +85,7 @@ export default async function WritePage({ searchParams }: WritePageProps) {
         }
         initialProgress={todayProgress}
         showPromptPicker={!draft}
+        dailyContest={dailyContest}
       />
     </ProtectedPageShell>
   );
