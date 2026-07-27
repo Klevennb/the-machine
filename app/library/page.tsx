@@ -26,6 +26,8 @@ export default async function LibraryPage() {
       wordCount: true,
       privateAuthorNote: true,
       publicAuthorNote: true,
+      storyGenre: true,
+      customStoryGenre: true,
       visibility: true,
       isNsfw: true,
       status: true,
@@ -33,6 +35,7 @@ export default async function LibraryPage() {
       updatedAt: true,
       publishedAt: true,
       contestEntry: { select: { id: true, status: true, contest: { select: { contestDate: true } } } },
+      contestDraft: { select: { contest: { select: { contestDate: true, submissionsCloseAt: true } } } },
     },
   });
 
@@ -50,6 +53,10 @@ export default async function LibraryPage() {
           updatedAt: entry.updatedAt.toISOString(),
           publishedAt: entry.publishedAt?.toISOString() ?? null,
           contestEntry: entry.contestEntry ? { ...entry.contestEntry, contestDate: entry.contestEntry.contest.contestDate.toISOString().slice(0, 10) } : null,
+          contestDraft: entry.contestDraft ? {
+            contestDate: entry.contestDraft.contest.contestDate.toISOString().slice(0, 10),
+            submissionsOpen: new Date() < entry.contestDraft.contest.submissionsCloseAt,
+          } : null,
         }))}
       />
     </ProtectedPageShell>

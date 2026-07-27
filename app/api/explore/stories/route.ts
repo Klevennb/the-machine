@@ -78,6 +78,8 @@ export async function GET(request: Request) {
           title: story.title?.trim() || "Untitled Entry",
           preview: getPreview(story),
           wordCount: story.wordCount,
+          storyGenre: story.storyGenre,
+          customStoryGenre: story.customStoryGenre,
           visibility: story.visibility,
           isNsfw: story.isNsfw,
           publishedAt: story.publishedAt?.toISOString() ?? null,

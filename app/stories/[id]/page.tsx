@@ -52,11 +52,14 @@ export default async function StoryPage({ params }: StoryPageProps) {
       plainText: true,
       wordCount: true,
       publicAuthorNote: true,
+      storyGenre: true,
+      customStoryGenre: true,
       visibility: true,
       status: true,
       isNsfw: true,
       publishedAt: true,
       contestEntry: { select: { status: true, contest: { select: { contestDate: true } } } },
+      sourceContest: { select: { contestDate: true } },
       author: {
         select: {
           id: true,
@@ -103,7 +106,9 @@ export default async function StoryPage({ params }: StoryPageProps) {
             <span>{formatDate(entry.publishedAt)}</span>
             <StreakChip tone="sage">{entry.visibility.toLowerCase()}</StreakChip>
             {entry.isNsfw ? <StreakChip>NSFW</StreakChip> : null}
+            {entry.storyGenre ? <StreakChip tone="sage">{entry.storyGenre === "Other" && entry.customStoryGenre ? entry.customStoryGenre : entry.storyGenre}</StreakChip> : null}
             {entry.contestEntry?.status === "ACTIVE" ? <Link className="font-bold text-[var(--sunset)]" href={`/contest/${entry.contestEntry.contest.contestDate.toISOString().slice(0, 10)}`}>Daily contest entry</Link> : null}
+            {entry.contestEntry?.status !== "ACTIVE" && entry.sourceContest ? <Link className="font-bold text-[var(--sage-dark)]" href={`/contest/${entry.sourceContest.contestDate.toISOString().slice(0, 10)}`}>Daily contest prompt · {entry.sourceContest.contestDate.toLocaleDateString(undefined, { timeZone: "UTC" })}</Link> : null}
           </div>
 
           {entry.publicAuthorNote ? (

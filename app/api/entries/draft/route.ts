@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { apiError, apiSuccess, createRequestId, logApiError } from "@/lib/api-response";
+import { normalizeStoryGenre, type StoryGenre } from "@/lib/entry-policy";
 import { invariant, invariantString } from "@/lib/invariant";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/session";
@@ -20,6 +21,8 @@ type SaveDraftPayload = {
   promptId: string | null;
   visibility: StoryVisibility;
   isNsfw: boolean;
+  storyGenre: StoryGenre | null;
+  customStoryGenre: string | null;
 };
 
 function getSummary(plainText: string) {
@@ -134,6 +137,10 @@ function parseSaveDraftPayload(body: unknown) {
   const visibility =
     record.visibility === undefined ? "PRIVATE" : record.visibility;
   const isNsfw = record.isNsfw === undefined ? false : record.isNsfw;
+  const normalizedGenre =
+    record.storyGenre === undefined || record.storyGenre === null
+      ? null
+      : normalizeStoryGenre(record.storyGenre, record.customStoryGenre);
 
   if (entryId === undefined) {
     return { error: "Entry id must be a string when provided." } as const;
@@ -161,6 +168,14 @@ function parseSaveDraftPayload(body: unknown) {
 
   if (typeof isNsfw !== "boolean") {
     return { error: "NSFW must be true or false." } as const;
+  }
+
+  if (
+    record.storyGenre !== undefined &&
+    record.storyGenre !== null &&
+    !normalizedGenre
+  ) {
+    return { error: "Choose a valid story genre." } as const;
   }
 
   if (
@@ -194,6 +209,8 @@ function parseSaveDraftPayload(body: unknown) {
       promptId,
       visibility,
       isNsfw,
+      storyGenre: normalizedGenre?.storyGenre ?? null,
+      customStoryGenre: normalizedGenre?.customStoryGenre ?? null,
     } satisfies SaveDraftPayload,
   } as const;
 }
@@ -313,6 +330,8 @@ export async function POST(request: Request) {
       title,
       visibility,
       isNsfw,
+      storyGenre,
+      customStoryGenre,
       wordCount,
     } = parsed.payload;
     requestedEntryId = entryId;
@@ -328,6 +347,8 @@ export async function POST(request: Request) {
       promptId,
       visibility,
       isNsfw,
+      storyGenre,
+      customStoryGenre,
       isStandalone: true,
     };
 
@@ -341,6 +362,7 @@ export async function POST(request: Request) {
           id: true,
           wordCount: true,
           contestEntry: { select: { status: true } },
+          contestDraft: { select: { id: true } },
         },
       });
 
@@ -367,7 +389,14 @@ export async function POST(request: Request) {
           where: {
             id: existingDraft.id,
           },
-          data: draftData,
+          data: existingDraft.contestDraft
+            ? {
+                ...draftData,
+                title: title.trim() || null,
+                visibility: "PRIVATE",
+                status: "DRAFT",
+              }
+            : draftData,
           select: {
             id: true,
             updatedAt: true,

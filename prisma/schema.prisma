@@ -120,6 +120,7 @@ model User {
   comments           EntryComment[]
   hiddenEntries      HiddenEntry[]
   contestQueueItems  ContestPromptQueueItem[] @relation("ContestQueueCreator")
+  contestDrafts      ContestDraft[]
   contestEntries     ContestEntry[]
   contestVotes       ContestVote[]
   sentFriendRequests Friendship[]           @relation("FriendshipRequester")
@@ -326,6 +327,7 @@ model Entry {
   authorId          String
   seriesId          String?
   promptId          String?
+  sourceContestId   String?
   title             String?
   slug              String?               @unique
   summary           String?
@@ -334,6 +336,11 @@ model Entry {
   wordCount         Int                   @default(0)
   privateAuthorNote String?
   publicAuthorNote  String?
+  storyGenre        String?
+  customStoryGenre  String?
+  sourcePromptTitle String?
+  sourcePromptBody  String?
+  sourcePromptGenre String?
   visibility        EntryVisibility       @default(PRIVATE)
   commentPolicy     CommentPolicy         @default(ENABLED)
   status            EntryStatus           @default(DRAFT)
@@ -346,16 +353,19 @@ model Entry {
   author            User                  @relation(fields: [authorId], references: [id], onDelete: Cascade)
   series            EntrySeries?          @relation(fields: [seriesId], references: [id], onDelete: SetNull)
   prompt            Prompt?               @relation("PromptResponses", fields: [promptId], references: [id], onDelete: SetNull)
+  sourceContest     DailyContest?          @relation("ContestOriginEntries", fields: [sourceContestId], references: [id], onDelete: SetNull)
   likes             EntryLike[]
   comments          EntryComment[]
   progressCredits   EntryProgressCredit[]
   hiddenBy          HiddenEntry[]
   contestEntry      ContestEntry?
+  contestDraft      ContestDraft?
 
   @@index([authorId, createdAt])
   @@index([seriesId, createdAt])
   @@index([visibility, status, publishedAt])
   @@index([promptId])
+  @@index([sourceContestId])
 }
 
 model DailyContest {
@@ -374,10 +384,27 @@ model DailyContest {
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
   entries             ContestEntry[]      @relation("ContestEntries")
+  drafts              ContestDraft[]
+  originEntries       Entry[]             @relation("ContestOriginEntries")
   winnerEntry         ContestEntry?       @relation("ContestWinner", fields: [winnerEntryId], references: [id], onDelete: SetNull)
   votes               ContestVote[]
 
   @@index([votingCloseAt, finalizedAt])
+}
+
+model ContestDraft {
+  id        String       @id @default(cuid())
+  contestId String
+  entryId   String       @unique
+  authorId  String
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  contest   DailyContest @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  entry     Entry        @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  author    User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@unique([contestId, authorId])
+  @@index([authorId, updatedAt])
 }
 
 model ContestPromptQueueItem {

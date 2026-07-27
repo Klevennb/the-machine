@@ -219,6 +219,8 @@ export async function getExploreStories({
       summary: true,
       plainText: true,
       wordCount: true,
+      storyGenre: true,
+      customStoryGenre: true,
       visibility: true,
       isNsfw: true,
       publishedAt: true,

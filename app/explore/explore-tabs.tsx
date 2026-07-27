@@ -18,6 +18,8 @@ type Story = {
   title: string;
   preview: string;
   wordCount: number;
+  storyGenre: string | null;
+  customStoryGenre: string | null;
   visibility: "PRIVATE" | "FRIENDS" | "PUBLIC";
   isNsfw: boolean;
   publishedAt: string | null;
@@ -280,6 +282,7 @@ function StoriesTab({ initialAllowNsfw }: { initialAllowNsfw: boolean }) {
                   <StreakChip tone="sage">{story.visibility.toLowerCase()}</StreakChip>
                 ) : null}
                 {story.isNsfw ? <StreakChip>NSFW</StreakChip> : null}
+                {story.storyGenre ? <StreakChip tone="sage">{story.storyGenre === "Other" && story.customStoryGenre ? story.customStoryGenre : story.storyGenre}</StreakChip> : null}
                 {story.contestDate ? <Link href={`/contest/${story.contestDate}`}><StreakChip tone="sage">Daily contest</StreakChip></Link> : null}
               </div>
               <h3 className="mt-4 break-words font-literary text-2xl font-semibold text-[var(--charcoal)]">

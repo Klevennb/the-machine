@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { isCurrentUserAdmin } from "@/lib/admin";
-import { moveContestVote, submitContestEntry } from "@/lib/daily-contest";
+import { withdrawContestSubmission } from "@/lib/contest-writing";
+import { moveContestVote } from "@/lib/daily-contest";
 import { prisma } from "@/lib/prisma";
 import { requireCurrentUserId } from "@/lib/session";
 
@@ -11,18 +12,6 @@ function value(formData: FormData, name: string) {
   const result = formData.get(name);
   if (typeof result !== "string" || !result) throw new Error(`${name} is required.`);
   return result;
-}
-
-export async function submitToContest(formData: FormData) {
-  const userId = await requireCurrentUserId();
-  const contestId = value(formData, "contestId");
-  try {
-    await submitContestEntry(prisma, { contestId, entryId: value(formData, "entryId"), userId });
-  } catch (error) {
-    redirect(`/contest?error=${encodeURIComponent(error instanceof Error ? error.message : "Unable to submit entry.")}`);
-  }
-  revalidatePath("/contest");
-  redirect("/contest");
 }
 
 export async function voteForContestEntry(formData: FormData) {
@@ -38,12 +27,7 @@ export async function voteForContestEntry(formData: FormData) {
 export async function withdrawContestEntry(formData: FormData) {
   const userId = await requireCurrentUserId();
   const contestEntryId = value(formData, "contestEntryId");
-  await prisma.$transaction(async (tx) => {
-    const item = await tx.contestEntry.findFirst({ where: { id: contestEntryId, authorId: userId, status: "ACTIVE", contest: { submissionsCloseAt: { gt: new Date() } } } });
-    if (!item) throw new Error("This contest entry can no longer be withdrawn.");
-    await tx.contestVote.deleteMany({ where: { contestEntryId } });
-    await tx.contestEntry.update({ where: { id: contestEntryId }, data: { status: "WITHDRAWN", withdrawnAt: new Date(), voteCount: 0 } });
-  });
+  await withdrawContestSubmission(prisma, { contestEntryId, userId });
   revalidatePath("/contest");
 }
 

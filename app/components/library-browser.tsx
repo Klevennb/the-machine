@@ -12,6 +12,8 @@ type LibraryEntry = {
   wordCount: number;
   privateAuthorNote: string | null;
   publicAuthorNote: string | null;
+  storyGenre: string | null;
+  customStoryGenre: string | null;
   visibility: "PRIVATE" | "FRIENDS" | "PUBLIC";
   isNsfw: boolean;
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
@@ -19,6 +21,7 @@ type LibraryEntry = {
   updatedAt: string;
   publishedAt: string | null;
   contestEntry: { id: string; status: "ACTIVE" | "WITHDRAWN" | "DISQUALIFIED"; contestDate: string } | null;
+  contestDraft: { contestDate: string; submissionsOpen: boolean } | null;
 };
 
 type LibraryBrowserProps = {
@@ -187,6 +190,9 @@ export function LibraryBrowser({ initialEntries }: LibraryBrowserProps) {
     initialEntries[0]?.id ?? null
   );
   const [visibilityMessage, setVisibilityMessage] = useState("");
+  const [privateNoteDraft, setPrivateNoteDraft] = useState(
+    initialEntries[0]?.privateAuthorNote ?? ""
+  );
   const [updatingVisibility, setUpdatingVisibility] = useState(false);
   const [isExportMode, setIsExportMode] = useState(false);
   const [selectedExportIds, setSelectedExportIds] = useState<string[]>([]);
@@ -209,6 +215,8 @@ export function LibraryBrowser({ initialEntries }: LibraryBrowserProps) {
         entry.publicAuthorNote,
         entry.status,
         entry.visibility,
+        entry.storyGenre,
+        entry.customStoryGenre,
       ]
         .filter(Boolean)
         .join(" ")
@@ -372,6 +380,37 @@ export function LibraryBrowser({ initialEntries }: LibraryBrowserProps) {
     });
   };
 
+  const saveLockedPrivateNote = async () => {
+    if (!selectedEntry || selectedEntry.contestEntry?.status !== "ACTIVE") return;
+    setVisibilityMessage("Saving private note...");
+    const response = await fetch(
+      `/api/entries/${selectedEntry.id}/private-note`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ privateAuthorNote: privateNoteDraft }),
+      }
+    );
+    const data = await readApiJson<
+      ApiErrorResponse | {
+        ok: true;
+        data: { entry: { id: string; privateAuthorNote: string | null } };
+      }
+    >(response);
+    if (!response.ok || !data || !("data" in data)) {
+      setVisibilityMessage(getApiErrorMessage(data, "Unable to save private note."));
+      return;
+    }
+    setEntries((current) =>
+      current.map((entry) =>
+        entry.id === data.data.entry.id
+          ? { ...entry, privateAuthorNote: data.data.entry.privateAuthorNote }
+          : entry
+      )
+    );
+    setVisibilityMessage("Private note saved.");
+  };
+
   if (entries.length === 0) {
     return (
       <div className="rounded-2xl border border-[var(--line)] bg-white/70 p-6 shadow-[var(--shadow-soft)]">
@@ -437,6 +476,7 @@ export function LibraryBrowser({ initialEntries }: LibraryBrowserProps) {
                     className="min-w-0 flex-1 cursor-pointer text-left"
                     onClick={() => {
                       setSelectedEntryId(entry.id);
+                      setPrivateNoteDraft(entry.privateAuthorNote ?? "");
                       setVisibilityMessage("");
                     }}
                     type="button"
@@ -454,6 +494,7 @@ export function LibraryBrowser({ initialEntries }: LibraryBrowserProps) {
                         </span>
                       ) : null}
                       {entry.contestEntry?.status === "ACTIVE" ? <span className="shrink-0 rounded-full bg-[var(--sage-soft)] px-2.5 py-1 text-xs font-bold text-[var(--sage-dark)]">Contest · locked</span> : null}
+                      {entry.contestDraft ? <span className="shrink-0 rounded-full bg-[var(--sage-soft)] px-2.5 py-1 text-xs font-bold text-[var(--sage-dark)]">{entry.contestDraft.submissionsOpen ? "Contest draft" : "Contest closed"} · {entry.contestDraft.contestDate}</span> : null}
                     </div>
                     <p className="mt-2 line-clamp-2 text-sm leading-6 text-[var(--muted)]">
                       {getPreview(entry)}
@@ -539,11 +580,13 @@ export function LibraryBrowser({ initialEntries }: LibraryBrowserProps) {
                 className="app-button-primary shrink-0 px-5 py-2.5 text-sm"
                 href={`/write?entryId=${selectedEntry.id}`}
               >
-                Edit Entry
+                {selectedEntry.contestDraft ? "Open contest draft" : "Edit Entry"}
               </Link>}
             </div>
 
-            {selectedEntry.contestEntry?.status !== "ACTIVE" ? <div className="mt-5 flex flex-wrap items-center gap-3 rounded-2xl bg-[var(--paper-soft)] p-4">
+            {selectedEntry.storyGenre ? <p className="mt-3 text-sm font-bold text-[var(--sage-dark)]">{selectedEntry.storyGenre === "Other" && selectedEntry.customStoryGenre ? selectedEntry.customStoryGenre : selectedEntry.storyGenre}</p> : null}
+
+            {!selectedEntry.contestDraft && selectedEntry.contestEntry?.status !== "ACTIVE" ? <div className="mt-5 flex flex-wrap items-center gap-3 rounded-2xl bg-[var(--paper-soft)] p-4">
               <span className="text-sm font-bold text-[var(--charcoal)]">
                 Visibility
               </span>
@@ -608,7 +651,7 @@ export function LibraryBrowser({ initialEntries }: LibraryBrowserProps) {
                   {visibilityMessage}
                 </span>
               ) : null}
-            </div> : <p className="mt-5 rounded-2xl bg-[var(--paper-soft)] p-4 text-sm font-semibold">This contest entry is public and locked against editing.</p>}
+            </div> : selectedEntry.contestEntry?.status === "ACTIVE" ? <div className="mt-5 rounded-2xl bg-[var(--paper-soft)] p-4"><p className="text-sm font-semibold">This contest entry is public and locked against editing.</p><label className="mt-4 block"><span className="text-sm font-bold">Private note</span><textarea className="app-field mt-2 min-h-24 w-full px-4 py-3" onChange={(event) => setPrivateNoteDraft(event.target.value)} value={privateNoteDraft}/></label><button className="app-button-secondary mt-3 px-4 py-2 text-sm" onClick={() => void saveLockedPrivateNote()} type="button">Save private note</button>{visibilityMessage ? <span className="ml-3 text-sm font-semibold text-[var(--muted)]">{visibilityMessage}</span> : null}</div> : <p className="mt-5 rounded-2xl bg-[var(--paper-soft)] p-4 text-sm font-semibold">Contest drafts remain private until submission.</p>}
 
             <article className="mt-5 max-h-[560px] overflow-auto whitespace-pre-wrap rounded-2xl bg-[var(--paper-soft)] p-6 font-literary text-lg leading-9 text-[var(--charcoal)]">
               {selectedEntry.plainText?.trim() || "No content yet."}

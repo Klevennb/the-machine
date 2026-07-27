@@ -46,6 +46,11 @@ import {
   $patchStyleText,
   $setBlocksType,
 } from "@lexical/selection";
+import {
+  getContestSubmissionRequirements,
+  STORY_GENRES,
+  type StoryGenre,
+} from "@/lib/entry-policy";
 import { invariant, invariantString } from "@/lib/invariant";
 
 type ToolbarState = {
@@ -104,20 +109,7 @@ const DEFAULT_TOOLBAR_STATE: ToolbarState = {
 };
 
 const FONT_SIZES = ["12px", "14px", "16px", "18px", "24px", "32px"];
-const GENRES = [
-  "Fantasy",
-  "Science Fiction",
-  "Romance",
-  "Mystery",
-  "Horror",
-  "Literary",
-  "Poetry",
-  "Memoir",
-  "Thriller",
-  "Historical",
-  "Comedy",
-  "Nonfiction",
-];
+const PROMPT_GENRES = STORY_GENRES.filter((genre) => genre !== "Other");
 
 type DraftContent = {
   root: {
@@ -142,6 +134,8 @@ type DraftEntry = {
   publicAuthorNote: string;
   visibility: "PRIVATE" | "FRIENDS" | "PUBLIC";
   isNsfw: boolean;
+  storyGenre: string | null;
+  customStoryGenre: string | null;
   prompt: WritingPrompt | null;
 };
 
@@ -149,7 +143,15 @@ type WriteEditorProps = {
   initialDraft: DraftEntry | null;
   initialProgress: WritingProgress;
   showPromptPicker: boolean;
-  dailyContest: { id: string; promptTitle: string; promptBody: string; promptGenre: string } | null;
+  dailyContest: {
+    id: string;
+    contestDate: string;
+    promptTitle: string;
+    promptBody: string;
+    promptGenre: string;
+    submissionsCloseAt: string;
+    submissionsOpen: boolean;
+  } | null;
 };
 
 type WritingPrompt = {
@@ -711,6 +713,12 @@ export function WriteEditor({
     initialDraft?.visibility ?? "PRIVATE"
   );
   const [isNsfw, setIsNsfw] = useState(initialDraft?.isNsfw ?? false);
+  const [storyGenre, setStoryGenre] = useState<StoryGenre | null>(
+    (initialDraft?.storyGenre as StoryGenre | null) ?? null
+  );
+  const [customStoryGenre, setCustomStoryGenre] = useState(
+    initialDraft?.customStoryGenre ?? ""
+  );
   const [isPrivateNoteOpen, setIsPrivateNoteOpen] = useState(() =>
     Boolean(initialDraft?.privateAuthorNote.trim())
   );
@@ -725,13 +733,14 @@ export function WriteEditor({
   const [selectedPrompt, setSelectedPrompt] = useState<WritingPrompt | null>(
     initialDraft?.prompt ?? (dailyContest ? { id: `contest:${dailyContest.id}`, title: dailyContest.promptTitle, body: dailyContest.promptBody, genre: dailyContest.promptGenre, tags: [] } : null)
   );
-  const [promptGenre, setPromptGenre] = useState(GENRES[0]);
+  const [promptGenre, setPromptGenre] = useState<string>(PROMPT_GENRES[0]);
   const [seenPromptIds, setSeenPromptIds] = useState<string[]>(
     initialDraft?.prompt ? [initialDraft.prompt.id] : []
   );
   const [isLoadingPrompt, setIsLoadingPrompt] = useState(false);
   const [promptMessage, setPromptMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isSubmissionReviewOpen, setIsSubmissionReviewOpen] = useState(false);
   const [saveMessage, setSaveMessage] = useState(
     initialDraft ? "Loaded published entry." : "Entry not published yet."
   );
@@ -744,6 +753,11 @@ export function WriteEditor({
         100
     )
   );
+  const submissionRequirements = getContestSubmissionRequirements({
+    title,
+    storyGenre,
+    wordCount,
+  });
 
   const requestPrompt = async (resetSeenPrompts = false) => {
     invariant(typeof resetSeenPrompts === "boolean", "resetSeenPrompts must be boolean.");
@@ -796,14 +810,32 @@ export function WriteEditor({
     }
   };
 
-  const publishEntry = async (): Promise<string | null> => {
+  const getEntryPayload = () => ({
+    entryId,
+    title,
+    plainText,
+    content,
+    wordCount,
+    privateAuthorNote,
+    publicAuthorNote,
+    visibility,
+    isNsfw,
+    storyGenre,
+    customStoryGenre,
+    promptId:
+      selectedPrompt?.id.startsWith("contest:")
+        ? null
+        : selectedPrompt?.id ?? null,
+  });
+
+  const saveEntry = async (): Promise<string | null> => {
     invariant(typeof entryId === "string" || entryId === null, "entryId must be a string or null.");
     invariantString(title, "title");
     invariantString(plainText, "plainText");
     invariant(Number.isFinite(wordCount), "wordCount must be finite.");
 
     setIsSaving(true);
-    setSaveMessage("Publishing entry...");
+    setSaveMessage(dailyContest ? "Saving draft..." : "Publishing entry...");
 
     try {
       const response = await fetch("/api/entries/draft", {
@@ -811,18 +843,7 @@ export function WriteEditor({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          entryId,
-          title,
-          plainText,
-          content,
-          wordCount,
-          privateAuthorNote,
-          publicAuthorNote,
-          visibility,
-          isNsfw,
-          promptId: dailyContest ? null : selectedPrompt?.id ?? null,
-        }),
+        body: JSON.stringify(getEntryPayload()),
       });
 
       const data = await readApiJson<
@@ -833,7 +854,10 @@ export function WriteEditor({
 
       if (!response.ok || !draft) {
         setSaveMessage(
-          getApiErrorMessage(data, "Unable to publish entry.")
+          getApiErrorMessage(
+            data,
+            dailyContest ? "Unable to save draft." : "Unable to publish entry."
+          )
         );
         return null;
       }
@@ -842,10 +866,18 @@ export function WriteEditor({
       if (progress) {
         setDailyProgress(progress);
       }
-      setSaveMessage(getPublishedSuccessMessage(draft.updatedAt));
+      setSaveMessage(
+        dailyContest
+          ? `Draft saved ${new Date(draft.updatedAt).toLocaleString()}`
+          : getPublishedSuccessMessage(draft.updatedAt)
+      );
       return draft.id;
     } catch {
-      setSaveMessage("Unable to publish entry. Check your connection and try again.");
+      setSaveMessage(
+        dailyContest
+          ? "Unable to save draft. Check your connection and try again."
+          : "Unable to publish entry. Check your connection and try again."
+      );
       return null;
     } finally {
       setIsSaving(false);
@@ -853,17 +885,62 @@ export function WriteEditor({
   };
 
   const submitToContest = async () => {
-    if (!dailyContest || !window.confirm("Contest entries are public and cannot be edited after submission.")) return;
-    const savedEntryId = await publishEntry();
-    if (!savedEntryId) return;
+    if (!dailyContest || !entryId || !submissionRequirements.isReady) return;
     setIsSaving(true);
     setSaveMessage("Submitting entry to contest...");
     try {
-      const response = await fetch("/api/contest/entries", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contestId: dailyContest.id, entryId: savedEntryId }) });
-      const data = await readApiJson<ApiErrorResponse | { ok: true }>(response);
+      const response = await fetch("/api/contest/entries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(getEntryPayload()),
+      });
+      const data = await readApiJson<
+        ApiErrorResponse | {
+          ok: true;
+          data: { contestEntry: { id: string } };
+        }
+      >(response);
       if (!response.ok) { setSaveMessage(getApiErrorMessage(data, "Unable to submit contest entry.")); return; }
-      window.location.href = "/contest";
+      if (!data || !("data" in data)) {
+        setSaveMessage("Unable to confirm contest submission.");
+        return;
+      }
+      window.location.href = `/contest/${dailyContest.contestDate}?submitted=${data.data.contestEntry.id}#entry-${data.data.contestEntry.id}`;
     } catch { setSaveMessage("Unable to submit contest entry."); } finally { setIsSaving(false); }
+  };
+
+  const continueAsNormalWriting = async () => {
+    if (
+      !dailyContest ||
+      !entryId ||
+      !window.confirm(
+        "Continue as normal writing? This draft will no longer be eligible for today's contest. Your work will be saved and moved to the standard editor."
+      )
+    ) {
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveMessage("Saving and moving to the standard editor...");
+    try {
+      const response = await fetch("/api/contest/drafts/convert", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(getEntryPayload()),
+      });
+      const data = await readApiJson<ApiErrorResponse | { ok: true }>(response);
+      if (!response.ok) {
+        setSaveMessage(
+          getApiErrorMessage(data, "Unable to continue as normal writing.")
+        );
+        return;
+      }
+      window.location.href = `/write?entryId=${entryId}`;
+    } catch {
+      setSaveMessage("Unable to continue as normal writing.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -873,6 +950,40 @@ export function WriteEditor({
         editorState: initialEditorState,
       }}
     >
+      <>
+      {dailyContest ? (
+        <section className="mb-6 rounded-2xl border border-[var(--line)] bg-white/75 p-6 shadow-[var(--shadow-soft)]">
+          <div className="flex flex-wrap items-start justify-between gap-5">
+            <div className="max-w-4xl">
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--sage-dark)]">
+                Today&apos;s contest prompt
+              </p>
+              <h2 className="mt-3 font-literary text-2xl font-bold text-[var(--charcoal)]">
+                {dailyContest.promptTitle}
+              </h2>
+              <p className="mt-2 text-sm font-semibold text-[var(--muted)]">
+                {dailyContest.promptGenre}
+              </p>
+              <p className="mt-4 font-literary text-lg italic leading-8 text-[var(--charcoal)]">
+                {dailyContest.promptBody}
+              </p>
+              <p className="mt-4 text-sm font-bold text-[var(--sunset)]">
+                {dailyContest.submissionsOpen
+                  ? "Submissions close today at 11:59 PM CT"
+                  : "Contest closed — this draft can no longer be submitted"}
+              </p>
+            </div>
+            <button
+              className="app-button-secondary px-4 py-2.5 text-sm disabled:opacity-60"
+              disabled={isSaving}
+              onClick={() => void continueAsNormalWriting()}
+              type="button"
+            >
+              Continue as normal writing
+            </button>
+          </div>
+        </section>
+      ) : null}
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="min-w-0">
         {showPromptPicker ? (
@@ -891,7 +1002,7 @@ export function WriteEditor({
                   }}
                   value={promptGenre}
                 >
-                  {GENRES.map((genre) => (
+                  {PROMPT_GENRES.map((genre) => (
                     <option key={genre} value={genre}>
                       {genre}
                     </option>
@@ -1009,30 +1120,63 @@ export function WriteEditor({
             </div>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-            <label className="block">
-              <span className="mb-2 block text-sm font-bold text-[var(--charcoal)]">
-                Visibility
-              </span>
-              <select
-                className="app-field w-full px-4 py-3"
-                onChange={(event) => {
-                  setVisibility(
-                    event.target.value as "PRIVATE" | "FRIENDS" | "PUBLIC"
-                  );
-                  setSaveMessage((current) =>
-                    current.startsWith("Published")
-                      ? "Entry has unpublished changes."
-                      : current
-                  );
-                }}
-                value={visibility}
-              >
-                <option value="PRIVATE">Private</option>
-                <option value="FRIENDS">Friends</option>
-                <option value="PUBLIC">Public</option>
-              </select>
-            </label>
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
+            {!dailyContest ? (
+              <label className="block">
+                <span className="mb-2 block text-sm font-bold text-[var(--charcoal)]">
+                  Visibility
+                </span>
+                <select
+                  className="app-field w-full px-4 py-3"
+                  onChange={(event) => {
+                    setVisibility(
+                      event.target.value as "PRIVATE" | "FRIENDS" | "PUBLIC"
+                    );
+                  }}
+                  value={visibility}
+                >
+                  <option value="PRIVATE">Private</option>
+                  <option value="FRIENDS">Friends</option>
+                  <option value="PUBLIC">Public</option>
+                </select>
+              </label>
+            ) : null}
+
+            <div>
+              <label className="block">
+                <span className="mb-2 block text-sm font-bold text-[var(--charcoal)]">
+                  Story genre{dailyContest ? " (required)" : " (optional)"}
+                </span>
+                <select
+                  className="app-field w-full px-4 py-3"
+                  onChange={(event) =>
+                    setStoryGenre(
+                      event.target.value
+                        ? (event.target.value as StoryGenre)
+                        : null
+                    )
+                  }
+                  value={storyGenre ?? ""}
+                >
+                  {!dailyContest ? <option value="">Not categorized</option> : null}
+                  {STORY_GENRES.map((genre) => (
+                    <option key={genre} value={genre}>{genre}</option>
+                  ))}
+                </select>
+              </label>
+              {storyGenre === "Other" ? (
+                <label className="mt-3 block">
+                  <span className="sr-only">Custom story genre</span>
+                  <input
+                    className="app-field w-full px-4 py-3"
+                    maxLength={48}
+                    onChange={(event) => setCustomStoryGenre(event.target.value)}
+                    placeholder="Optional custom genre"
+                    value={customStoryGenre}
+                  />
+                </label>
+              ) : null}
+            </div>
 
             <label className="flex min-h-12 items-center gap-3 rounded-2xl border border-[var(--line)] bg-[var(--paper-soft)] px-4 py-3 text-sm font-bold text-[var(--charcoal)]">
               <input
@@ -1081,6 +1225,22 @@ export function WriteEditor({
             }}
           />
         </div>
+        {dailyContest ? (
+          <div className="mt-4 rounded-2xl border border-[var(--line)] bg-white/70 p-4">
+            <p className="text-sm font-bold text-[var(--charcoal)]">Ready to submit</p>
+            <ul className="mt-2 flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold">
+              <li className={submissionRequirements.hasTitle ? "text-[var(--sage-dark)]" : "text-[var(--sunset)]"}>
+                {submissionRequirements.hasTitle ? "✓" : "○"} Title added
+              </li>
+              <li className={submissionRequirements.hasStoryGenre ? "text-[var(--sage-dark)]" : "text-[var(--sunset)]"}>
+                {submissionRequirements.hasStoryGenre ? "✓" : "○"} Story genre selected
+              </li>
+              <li className={submissionRequirements.hasMinimumWords ? "text-[var(--sage-dark)]" : "text-[var(--sunset)]"}>
+                {submissionRequirements.hasMinimumWords ? "✓" : "○"} At least 100 words
+              </li>
+            </ul>
+          </div>
+        ) : null}
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <div
             aria-live="polite"
@@ -1091,25 +1251,49 @@ export function WriteEditor({
           <button
             className="app-button-primary inline-flex items-center gap-2 px-5 py-2.5 text-sm disabled:cursor-not-allowed disabled:bg-[var(--muted)]"
             disabled={isSaving}
-            onClick={() => void publishEntry()}
+            onClick={() => void saveEntry()}
             type="button"
           >
             {isSaving ? (
               <>
-                <Spinner label="Publishing entry" />
-                Publishing...
+                <Spinner label={dailyContest ? "Saving draft" : "Publishing entry"} />
+                {dailyContest ? "Saving..." : "Publishing..."}
               </>
             ) : (
-              dailyContest ? "Save privately" : "Publish Entry"
+              dailyContest ? "Save draft" : "Publish Entry"
             )}
           </button>
-          {dailyContest ? <button className="app-button-primary inline-flex px-5 py-2.5 text-sm disabled:opacity-60" disabled={isSaving || wordCount < 100} onClick={submitToContest} type="button">Submit entry to contest</button> : null}
+          {dailyContest ? <button className="app-button-primary inline-flex px-5 py-2.5 text-sm disabled:opacity-60" disabled={isSaving || !dailyContest.submissionsOpen || !submissionRequirements.isReady} onClick={() => setIsSubmissionReviewOpen(true)} type="button">Submit to daily contest</button> : null}
         </div>
+        {dailyContest && isSubmissionReviewOpen ? (
+          <div
+            aria-modal="true"
+            className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
+            role="dialog"
+          >
+            <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
+              <h2 className="font-literary text-2xl font-bold">Submit this entry?</h2>
+              <dl className="mt-5 grid gap-3 rounded-2xl bg-[var(--paper-soft)] p-4 text-sm">
+                <div><dt className="font-bold">Title</dt><dd>{title.trim()}</dd></div>
+                <div><dt className="font-bold">Story genre</dt><dd>{storyGenre === "Other" && customStoryGenre.trim() ? customStoryGenre.trim() : storyGenre}</dd></div>
+                <div><dt className="font-bold">Word count</dt><dd>{wordCount.toLocaleString()}</dd></div>
+              </dl>
+              <p className="mt-4 text-sm font-bold text-[var(--sunset)]">
+                Contest entries are public and cannot be edited after submission.
+              </p>
+              {isNsfw ? <p className="mt-2 text-sm text-[var(--muted)]">This entry is marked NSFW and will be shown according to each viewer&apos;s contest preference.</p> : null}
+              <div className="mt-6 flex justify-end gap-3">
+                <button className="app-button-secondary px-4 py-2" onClick={() => setIsSubmissionReviewOpen(false)} type="button">Keep editing</button>
+                <button className="app-button-primary px-4 py-2" disabled={isSaving} onClick={() => void submitToContest()} type="button">Submit entry</button>
+              </div>
+            </div>
+          </div>
+        ) : null}
         <StatusBarPlugin />
         </div>
 
         <aside className="space-y-4">
-          <div className="rounded-2xl border border-[var(--line)] bg-white/70 p-6 shadow-[var(--shadow-soft)]">
+          {!dailyContest ? <div className="rounded-2xl border border-[var(--line)] bg-white/70 p-6 shadow-[var(--shadow-soft)]">
             <h2 className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--sage-dark)]">
               Active Prompt
             </h2>
@@ -1127,7 +1311,7 @@ export function WriteEditor({
                 Choose a genre and request a prompt, or write from a blank page.
               </p>
             )}
-          </div>
+          </div> : null}
 
           <div className="rounded-2xl border border-[var(--line)] bg-[var(--paper-soft)] p-6">
             <span className="inline-flex rounded-full bg-[var(--sunset-soft)] px-3 py-1 text-xs font-bold text-[var(--sunset)]">
@@ -1170,6 +1354,7 @@ export function WriteEditor({
           </div>
         </aside>
       </div>
+      </>
     </LexicalComposer>
   );
 }

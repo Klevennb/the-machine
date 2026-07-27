@@ -1,5 +1,5 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
-import { assertContestSubmission, assertContestVote, CONTEST_TIME_ZONE, getContestWindow, selectContestPrompt, selectWinner } from "@/lib/contest-rules";
+import { assertContestVote, CONTEST_TIME_ZONE, getContestWindow, selectContestPrompt, selectWinner } from "@/lib/contest-rules";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -77,20 +77,6 @@ export async function getOrCreateContest(db: PrismaClient, now = new Date()) {
     }
     throw error;
   }
-}
-
-export async function submitContestEntry(db: PrismaClient, { contestId, entryId, userId, now = new Date() }: { contestId: string; entryId: string; userId: string; now?: Date }) {
-  return db.$transaction(async (tx) => {
-    const [contest, entry] = await Promise.all([
-      tx.dailyContest.findUnique({ where: { id: contestId } }),
-      tx.entry.findFirst({ where: { id: entryId, authorId: userId } }),
-    ]);
-    if (!contest || !entry) throw new Error("Contest or entry not found.");
-    assertContestSubmission({ now, wordCount: entry.wordCount, window: contest });
-    const contestEntry = await tx.contestEntry.create({ data: { contestId, entryId, authorId: userId, submittedAt: now } });
-    await tx.entry.update({ where: { id: entryId }, data: { visibility: "PUBLIC", status: "PUBLISHED", firstSubmittedAt: entry.firstSubmittedAt ?? now, publishedAt: entry.publishedAt ?? now } });
-    return contestEntry;
-  });
 }
 
 export async function moveContestVote(db: PrismaClient, { contestEntryId, userId, now = new Date() }: { contestEntryId: string; userId: string; now?: Date }) {

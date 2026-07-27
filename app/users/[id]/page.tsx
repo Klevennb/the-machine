@@ -112,6 +112,8 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
           summary: true,
           plainText: true,
           wordCount: true,
+          storyGenre: true,
+          customStoryGenre: true,
           visibility: true,
           isNsfw: true,
           publishedAt: true,
@@ -265,6 +267,7 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
                       <span>{entry.wordCount} words</span>
                       <span>Made public {formatDate(entry.publishedAt)}</span>
                       <span>{entry.visibility.toLowerCase()}</span>
+                      {entry.storyGenre ? <span>{entry.storyGenre === "Other" && entry.customStoryGenre ? entry.customStoryGenre : entry.storyGenre}</span> : null}
                       {entry.isNsfw ? <span>NSFW</span> : null}
                       {entry.contestEntry?.status === "ACTIVE" ? <Link className="font-bold text-[var(--sunset)]" href={`/contest/${entry.contestEntry.contest.contestDate.toISOString().slice(0, 10)}`}>Daily contest</Link> : null}
                     </div>
